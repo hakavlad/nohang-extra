@@ -1,30 +1,6 @@
 # nohang-extra
 Additional utilities for working in conditions of shortage of memory
 
-
-
-
-## test
-
-test
-
-### test
-
-test
-
-
-#### test
-
-test
-
-
-
-
-
-
-
-
-
-
-
+## status
+Всё это находится в состоянии черновиков.
 
