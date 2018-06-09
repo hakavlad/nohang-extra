@@ -1,0 +1,27 @@
+#!/usr/bin/env python3
+
+# magic sysrq key info
+
+with open('/proc/cmdline') as file:
+    cmdline_list = file.readlines()[0].split(' ')
+
+if 'sysrq_always_enabled' in cmdline_list:
+
+    print('Magic SysRq key enabled with sysrq_always_enabled boot cmdline')
+
+else:
+
+    with open('/proc/sys/kernel/sysrq') as file:
+        sysrq = int(file.readlines()[0][:-1])
+
+    if sysrq == 0:
+        print('Magic SysRq key disabled with /proc/sys/kernel/sysrq = 0')
+    elif sysrq == 1:
+        print('Magic SysRq key enabled with /proc/sys/kernel/sysrq = 1')
+    else:
+        print('Magic SysRq key partially enabled with /proc/sys/kernel/sysrq = {}'.format(sysrq))
+
+
+
+
+

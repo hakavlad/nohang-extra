@@ -1,0 +1,28 @@
+#!/usr/bin/env python3
+
+
+
+with open('/proc/sys/vm/swappiness') as file:
+    swappiness = file.readlines()[0][:-1]
+
+
+with open('/proc/sys/vm/min_free_kbytes') as file:
+    min_free_kbytes = file.readlines()[0][:-1]
+
+with open('/proc/sys/vm/admin_reserve_kbytes') as file:
+    admin_reserve_kbytes = file.readlines()[0][:-1]
+
+
+
+print('/proc/sys/vm/*')
+print('swappiness           {}'.format(swappiness.rjust(9, ' ')))
+print('min_free_kbytes      {}'.format(min_free_kbytes.rjust(9, ' ')))
+print('admin_reserve_kbytes {}'.format(admin_reserve_kbytes.rjust(9, ' ')))
+
+
+
+
+
+
+
+

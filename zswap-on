@@ -1,0 +1,6 @@
+#!/bin/sh
+echo 1 > /sys/module/zswap/parameters/enabled
+echo 80 > /sys/module/zswap/parameters/max_pool_percent
+echo lzo > /sys/module/zswap/parameters/compressor
+
+

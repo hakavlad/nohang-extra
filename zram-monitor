@@ -1,0 +1,178 @@
+#!/usr/bin/env python3
+
+from time import sleep
+import os
+from memco import *
+
+block_list = os.listdir('/sys/block')
+
+zram_list = []
+for dev in block_list:
+    if dev.startswith('zram'):
+        zram_list.append(dev)
+# лучше тут же обрабатывать зрамы, а не формировать список из них
+
+print(zram_list)
+
+
+# возвращает disksize и mem_used_total по zram id
+def zram_stat(zram_id):
+
+    with open('/sys/block/' + zram_id + '/max_comp_streams') as file:
+        max_comp_streams = file.readlines()[0][:-1]
+
+    with open('/sys/block/' + zram_id + '/disksize') as file:
+        disksize = file.readlines()[0][:-1]
+
+    with open('/sys/block/' + zram_id + '/comp_algorithm') as file:
+        comp_algorithm = file.readlines()[0][:-1].split('[')[1].split(']')[0]
+
+
+    if os.path.exists('/sys/block/' + zram_id + '/backing_dev'):
+        with open('/sys/block/' + zram_id + '/backing_dev') as file:
+            backing_dev = file.readlines()[0][:-1]
+    else:
+        backing_dev = 'not supported'
+
+    with open('/sys/block/' + zram_id + '/initstate') as file:
+        initstate = file.readlines()[0][:-1]
+
+    if os.path.exists('/sys/block/' + zram_id + '/mm_stat'):
+        with open('/sys/block/' + zram_id + '/mm_stat') as file:
+            mm_stat = file.readlines()[0][:-1].split(' ')
+        mm_stat_list = []
+        for i in mm_stat:
+            if i != '':
+                mm_stat_list.append(i)
+        orig_data_size = mm_stat_list[0]
+        compr_data_size = mm_stat_list[1]
+        mem_used_total = mm_stat_list[2]
+        mem_limit = mm_stat_list[3]
+        mem_used_max = mm_stat_list[4]
+        same_pages = mm_stat_list[5]
+        pages_compacted = mm_stat_list[6]
+
+    else:
+
+        with open('/sys/block/' + zram_id + '/orig_data_size') as file:
+            orig_data_size = file.readlines()[0][:-1]
+
+        with open('/sys/block/' + zram_id + '/compr_data_size') as file:
+            compr_data_size = file.readlines()[0][:-1]
+
+        with open('/sys/block/' + zram_id + '/mem_used_total') as file:
+            mem_used_total = file.readlines()[0][:-1]
+
+        try:
+            with open('/sys/block/' + zram_id + '/mem_limit') as file:
+                mem_limit = file.readlines()[0][:-1]
+        except FileNotFoundError:
+            mem_limit = None
+
+        try:
+            with open('/sys/block/' + zram_id + '/mem_used_max') as file:
+                mem_used_max = file.readlines()[0][:-1]
+        except FileNotFoundError:
+            mem_used_max = None
+
+        try:
+            with open('/sys/block/' + zram_id + '/same_pages') as file:
+                same_pages = file.readlines()[0][:-1]
+        except FileNotFoundError:
+            same_pages = None
+
+        try:
+            with open('/sys/block/' + zram_id + '/pages_compacted') as file:
+                pages_compacted = file.readlines()[0][:-1]
+        except FileNotFoundError:
+            pages_compacted = None
+
+    return (
+        orig_data_size, # 0
+        compr_data_size, # 1
+        mem_used_total, # 2
+        mem_limit, # 3
+        mem_used_max, # 4
+        same_pages, # 5
+        pages_compacted, # 6
+        max_comp_streams, # 7
+        disksize, # 8
+        comp_algorithm, # 9
+        backing_dev, # 10
+        initstate # 11
+        )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+while True:
+    x = zram_stat('zram0')
+    print("\033c")
+    print('disksize:        {} GiB'.format(humanz(int(x[8]))))
+    print('orig_data_size:  {} GiB'.format(humanz(int(x[0]))))
+    print()
+    print('mem_limit:       {} GiB'.format(humanz(int(x[3]))))
+    print('mem_used_max:    {} GiB'.format(humanz(int(x[4]))))
+    print('mem_used_total:  {} GiB'.format(humanz(int(x[2]))))
+    print('compr_data_size: {} GiB'.format(humanz(int(x[1]))))
+    sleep(0.2)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+'''
+orig_data_size
+compr_data_size
+mem_used_total
+mem_limit
+mem_used_max
+same_pages
+pages_compacted
+
+max_comp_streams
+disksize
+comp_algorithm
+backing_dev
+initstate
+
+ПРОВЕРКА ПОДДЕРЖКИ ЯДРОМ БЭКИНГ ДЕВА!
+СРАЗУ, ПРИ ЗАПУСКЕ!
+
+Еще: собствен размер, общая доля в рам
+вычленить алгоритм сжатия
+
+
+
+'''
+
+
+
+
+
+

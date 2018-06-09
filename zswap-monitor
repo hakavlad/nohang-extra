@@ -1,0 +1,44 @@
+#!/usr/bin/env python3
+
+from memco import *
+
+while True:
+
+    print("\033c")
+
+    with open('/sys/module/zswap/parameters/enabled') as file:
+        zswap_enabled = file.readlines()[0][:-1]
+
+    with open('/sys/module/zswap/parameters/max_pool_percent') as file:
+        zswap_max_pool_percent = file.readlines()[0][:-1]
+
+    with open('/sys/module/zswap/parameters/compressor') as file:
+        zswap_compressor = file.readlines()[0][:-1]
+
+    with open('/sys/module/zswap/parameters/zpool') as file:
+        zswap_zpool = file.readlines()[0][:-1]
+
+    print('zswap_enabled          ', zswap_enabled)
+    print('zswap_max_pool_percent ', zswap_max_pool_percent)
+    print('zswap_compressor       ', zswap_compressor)
+    print('zswap_zpool            ', zswap_zpool)
+
+    print()
+
+    try:
+        zs_files = os.listdir('/sys/kernel/debug/zswap')
+    except PermissionError:
+        print("Permission denied: '/sys/kernel/debug/zswap'")
+        exit()
+
+    for i in zs_files:
+
+        with open('/sys/kernel/debug/zswap/' + i) as file:
+            zi = file.readlines()[0][:-1]
+
+        print(i.ljust(23, ' '), zi)
+
+    sleep(1)
+
+
+
