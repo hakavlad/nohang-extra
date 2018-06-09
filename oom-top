@@ -2,45 +2,22 @@
 
 # top oom_score
 
-
-
-
 from time import sleep
-import os
-import operator
+from operator import itemgetter
+from os import listdir
 
-oom_score_min_value = 1
-num_lines = 30
 period = 1
+num_lines = 20
+oom_score_min_value = 0
 
-
-'''
-# KiB -> MiB
+# перевод кило в мегабайты и выравнивание по правому краю
 def human(num):
-    a = str(round(num / 1024.0, 3))
-    a0 = a.split('.')[0].rjust(4, ' ')
-    a1 = a.split('.')[1]
-    if len(a1) == 1:
-        a1 += '00'
-    if len(a1) == 2:
-        a1 += '0'
-    return '{}.{}'.format(a0, a1)
-'''
-
-
-def human(num):
-    return str(round(num / 1024.0)).rjust(8, ' ')
-
-
-
-
-
-
-
+    return str(round(num / 1024.0)).rjust(7, ' ')
 
 with open('/proc/self/status') as file:
     status_list = file.readlines()
 
+# список имен из /proc/*/status для дальнейшего поиска позиций VmRSS and VmSwap
 status_names = []
 for s in status_list:
     status_names.append(s.split(':')[0])
@@ -52,64 +29,90 @@ vm_swap_index = status_names.index('VmSwap')
 while True:
 
     oom_list = []
-    for i in os.listdir('/proc'):
+
+    # цикл для наполнения oom_list
+    for i in listdir('/proc'):
+
+        # пропускаем элементы, состоящие не из цифр
         if i.isdigit() is not True:
             continue
+
         try:
+
             with open('/proc/' + i + '/oom_score') as file:
                 oom_score = int(file.readlines()[0][:-1])
-        except Exception:
-            print('exception oom!')
-        oom_list.append((i, oom_score))
-    oom_list_sorted = sorted(oom_list, key=operator.itemgetter(1), reverse=True)
 
-    print("\033c")
-    print('oom_score    Pid  Name                VmRSS      VmSwap    VmRSS+Swap')
-    print('---------  -----  ---------------  ----------  ----------  ----------')
+            with open('/proc/' + i + '/oom_adj') as file:
+                oom_adj = int(file.readlines()[0][:-1])
 
+            with open('/proc/' + i + '/oom_score_adj') as file:
+                oom_score_adj = int(file.readlines()[0][:-1])
+
+        except FileNotFoundError:
+            pass
+        except ProcessLookupError:
+            pass
+
+        oom_list.append((i, oom_score, oom_adj, oom_score_adj))
+
+    # получаем сортированный список oom_score
+    oom_list_sorted = sorted(oom_list, key=itemgetter(1), reverse=True)
+
+    # если общее число процессов меньше num_lines - приравниваем последний к числу процессов
     if len(oom_list_sorted) < num_lines:
         num_lines = len(oom_list_sorted) - 1
 
+
+    print('\033coom_score oom_adj oom_score_adj   Pid Name                 RSS       Swap')
+    print('--------- ------- ------------- ----- --------------- --------- ---------')
+
+    # итерируемся по сортированному списку oom_score, печатая name, pid etc
     for i in oom_list_sorted[:num_lines]:
-        oom_score = i[1]
+
         pid = i[0]
+        oom_score = i[1]
+        oom_adj = i[2]
+        oom_score_adj = i[3]
 
         try:
+
+            # читать часть файла не дальше VmSwap
             with open('/proc/' + pid + '/status') as file:
                 status_list = file.readlines()
 
             vm_rss = int(status_list[vm_rss_index].split(':')[1].split(' ')[-2])
             vm_swap = int(status_list[vm_swap_index].split(':')[1].split(' ')[-2])
-            vm_sum = vm_rss + vm_swap
             name = status_list[0][:-1].split('\t')[1]
 
-        except Exception:
+        # потоки ядра
+        except IndexError:
             vm_rss = 0
             vm_swap = 0
-            vm_sum = 0
             name = status_list[0][:-1].split('\t')[1]
 
+        except FileNotFoundError:
+            vm_rss = 0
+            vm_swap = 0
+            name = '<unknown, dead>'
 
-        if int(oom_score) >= oom_score_min_value:
+        except ProcessLookupError:
+            vm_rss = 0
+            vm_swap = 0
+            name = '<unknown, dead>'
+
+        if oom_score >= oom_score_min_value:
+
             print(
-                '{}{}  {} {} M  {} M  {} M'.format(
+                '{} {} {} {} {} {} M {} M'.format(
                     str(oom_score).rjust(9), 
-                    str(pid).rjust(7), 
-                    name.ljust(16), 
+                    str(oom_adj).rjust(7), 
+                    str(oom_score_adj).rjust(13), 
+                    str(pid).rjust(5), 
+                    name.ljust(15), 
                     human(vm_rss), 
                     human(vm_swap), 
-                    human(vm_sum)
                     )
                 )
 
     sleep(period)
-
-
-
-
-
-
-
-
-
 
