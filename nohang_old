@@ -1,0 +1,194 @@
+#!/usr/bin/env python3
+
+
+from time import sleep
+from glob import glob
+import os
+import signal
+from multiprocessing.dummy import Pool as ThreadPool
+
+# the percentage of available memory below which process terminator runs
+oom_del_level = 9
+oom_term_level = 6
+oom_kill_level = 3
+zram_mem_used_total_del = 50
+zram_mem_used_total_term = 55
+zram_mem_used_total_kill = 60
+
+# t_tmpfs_background = 5
+
+del_size = 1024 * 1024 * 50
+
+# the aggressiveness of monitoring, the higher it is, the higher the frequency of checking the memory shortage
+k = 1
+
+# minimum timeout between launch OOM killers
+t_min = 0.1
+
+used = '|'
+free = '~'
+len_visual = 20
+
+# WTF? поиск позиции свопов? ёбаный костыль
+with open('/proc/meminfo') as file:
+    mem_list = file.readlines()
+for i in range(len(mem_list)):
+    if mem_list[i].find('SwapTotal') == 0:
+        swap_total_pos = i
+        break
+
+
+print('Columns:\nmem+swap usage : number of sends SIGTERM : numer of sends SIGKILL : monitoring period\n')
+
+# непосредственно стиратель файлов
+def del_file(filename):
+    with open(filename, 'w') as file:
+        file.write('')
+
+# фция очистки tmpfs от крупных файлов в фоне и при крайнем дефиците
+def tmpfs_cleaner():
+    with open('/proc/mounts') as file:
+        mounts_list = file.readlines()
+    tmpfs_list = []
+    for i in mounts_list:
+        m_str = i.split(' ')
+        if m_str[0] == 'tmpfs':
+            tmpfs_list.append(m_str[1])
+
+    path_list = []
+    for i in tmpfs_list:
+        for d, dirs, files in os.walk(i):
+            for f in files:
+                path = os.path.join(d, f)
+                path_list.append(path)
+
+    size_list = []
+    for path in path_list:
+        try:
+            size = os.path.getsize(path)
+        except FileNotFoundError:
+            size = 0
+        size_list.append(size)
+
+    size_list_new = sorted(size_list)
+    size_list_new.reverse()
+
+    for size in size_list_new:
+        if size > del_size:
+            ind = size_list.index(size)
+            p = path_list[ind]
+            print(size, p)
+            try:
+                del_file(p)
+            except FileNotFoundError:
+                pass
+
+# process terminator
+# функция поиска жиробаса и его убийства
+def termer(signal):
+    subdirs = glob('/proc/*/')
+    subdirs.remove('/proc/self/')
+    subdirs.remove('/proc/thread-self/')
+    pid_list = []
+    name_list = []
+    oom_score_list = []
+    for subdir in subdirs:
+        try:
+            with open(subdir + 'status') as file:
+                status = file.readlines()
+            pid_list.append(status[5].split(':')[1][1:-1])
+            name_list.append(status[0].split(':')[1][1:-1])
+        except Exception:
+            pass
+        try:
+            with open(subdir + 'oom_score') as file:
+                oom_score = file.readlines()
+            oom_score_list.append(int(oom_score[0][0:-1]))
+        except Exception:
+            pass
+    max_oom_score = sorted(oom_score_list)[-1]
+    n = oom_score_list.index(max_oom_score)
+    s = sorted(oom_score_list)
+    s.reverse()
+    
+    if signal == signal.SIGTERM:
+        print('\nTRY TO TERM {}, Pid {}\n'.format(name_list[n], pid_list[n]))
+    else:
+        print('\nTRY TO KILL {}, Pid {}\n'.format(name_list[n], pid_list[n]))
+    
+    try:
+        os.kill(int(pid_list[n]), signal)
+    except ProcessLookupError:
+        print('No such process')
+
+
+# печать памяти, убийств, мониторниг состояния
+def liberator_main():
+    oom_kill_counter = 0
+    oom_term_counter = 0
+    while True:
+        with open('/proc/meminfo') as file:
+            mem_list = file.readlines()
+        mem_total = int(mem_list[0].split(':')[1].split(' ')[-2])
+        mem_available = int(mem_list[2].split(':')[1].split(' ')[-2])
+        swap_total = int(mem_list[swap_total_pos].split(':')[1].split(' ')[-2])
+        swap_free = int(mem_list[swap_total_pos + 1].split(':')[1].split(' ')[-2])
+        mem_free_pro  = (mem_available + swap_free) / (mem_total + swap_total) * 100
+        mem_swap_visual = (free * round((mem_available + swap_free) / (mem_total + swap_total) * len_visual)).rjust(len_visual, used)
+        
+        total_sum = 0
+        with open('/proc/swaps') as file:
+            swap_list = file.readlines()
+        zram_mounted_nums_list = []
+        for i in swap_list:
+            if i.find('zram') != -1:
+                zram_mounted_nums_list.append(i.split(' ')[0][9:])
+        for num in zram_mounted_nums_list:
+            with open('/sys/block/zram{}/mem_used_total'.format(zram_mounted_nums_list[int(num)])) as file:
+                total_sum_list = file.readlines()
+            total_sum += int(total_sum_list[0][:-1]) / 1024 # <------ mem_used_total sum
+        
+        total_sum_pro = total_sum / mem_total * 100
+        #print(total_sum_pro, 'TOTAL')
+        
+        t = (mem_available + swap_free) / 1024 / 1024 / 10 / k # перехват до двух гигабайт в сек
+        
+        print('{} : {} : {} : {}'.format(mem_swap_visual, oom_term_counter, oom_kill_counter, round(t, 5)))
+        
+        if mem_free_pro < oom_kill_level or total_sum_pro > zram_mem_used_total_kill:
+            tmpfs_cleaner()
+            termer(signal.SIGKILL)
+            oom_kill_counter += 1
+            sleep(t_min)
+        elif mem_free_pro < oom_term_level or total_sum_pro > zram_mem_used_total_term:
+            tmpfs_cleaner()
+            termer(signal.SIGTERM)
+            oom_term_counter += 1
+            sleep(t)
+        elif mem_free_pro < oom_del_level or total_sum_pro > zram_mem_used_total_del:
+            tmpfs_cleaner()
+            sleep(t)
+        else:
+            sleep(t)
+
+def liberator_tmpfs():
+    while True:
+        tmpfs_cleaner()
+        sleep(10)
+# слип должен быть мемтотал в гигах делить на 2
+
+
+def parallels(foo1, foo2):
+    pool = ThreadPool(2)
+    def parent(i):
+        if i == 1:
+            foo1()
+        else:
+            foo2()
+    pool.map(parent, [1, 2])
+    pool.close()
+    pool.join()
+
+parallels(liberator_main, liberator_tmpfs)
+
+# ВСЁ
