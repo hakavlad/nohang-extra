@@ -23,16 +23,6 @@ def mlockall():
     result = libc.mlockall(
         MCL_CURRENT | MCL_FUTURE | MCL_ONFAULT
     )
-    if result != 0:
-        result = libc.mlockall(
-            MCL_CURRENT | MCL_FUTURE
-        )
-        if result != 0:
-            print('WARNING: cannot lock all memory')
-        else:
-            log('All memory locked with MCL_CURRENT | MCL_FUTURE')
-    else:
-        print('All memory locked with MCL_CURRENT | MCL_FUTURE | MCL_ONFAULT')
 
 
 def check_mem():
@@ -41,7 +31,7 @@ def check_mem():
         for n, line in enumerate(f):
             if n is 2:
                 mem_available = int(line.split(':')[1][:-4])
-                return mem_available
+                return round(mem_available / 1024.0)
 
 
 def pid_to_name(pid):
@@ -66,12 +56,12 @@ def pid_to_state(pid):
         return ' '
 
 
-def pid_to_rss(pid):
+def pid_to_rss(pid, SC_PAGESIZE):
     try:
         rss = rline1('/proc/{}/statm'.format(pid)).split(' ')[1]
     except IndexError:
         rss = '-0'
-    return rss
+    return round(int(rss) * SC_PAGESIZE / (1024.0 ** 2))
 
 
 def pid_to_realpath(pid):
@@ -102,16 +92,16 @@ def rline1(path):
 
 if len(argv) != 2:
     print("""Usage:
-thanatolog PID""")
+    thanatolog PID""")
     exit()
 
 
 mlockall()
 
-
+SC_PAGESIZE = os.sysconf(os.sysconf_names['SC_PAGESIZE'])
 pid = argv[1]
 name = pid_to_name(pid)
-rss0 = float(pid_to_rss(pid))
+rss0 = float(pid_to_rss(pid, SC_PAGESIZE))
 ma = check_mem()
 
 
@@ -129,41 +119,59 @@ t0 = time()
 
 
 for i in range(10):
+    sleep(0.001)
     rpe = os.path.exists('/proc/{}/exe'.format(pid))
-    rss = pid_to_rss(pid)
+    rss = pid_to_rss(pid, SC_PAGESIZE)
     pe = os.path.exists('/proc/{}'.format(pid))
     t1 = time()
     d = t1 - t0
     state = pid_to_state(pid)
     ma = check_mem()
-    vv = pid_to_cmdline(pid)
-    print(vv)
-    print('RP: {}  |  RSS: {} ({} %)  |  State: {}  |  time: {}  |  MemAv'
+    print('RP: {}  |  RSS: {} ({} %)  |  {}  |  t: {:0<6}  |  MemAv'
           'ail: {}'.format(rpe, rss, round(float(rss) / (
-              rss0 + 0.0001) * 100, 1), state, round(d, 3), ma))
+              rss0 + 0.0001) * 100, 1), state, str(round(d, 4)), ma))
+
+
+print()
 
 print('Send SIGKILL')
 
-#os.kill(int(pid), send_signal)
+os.kill(int(pid), send_signal)
 
 t0 = time()
 
+ma0 = ma
+
+
 while True:
+    sleep(0.001)
     rpe = os.path.exists('/proc/{}/exe'.format(pid))
-    rss = pid_to_rss(pid)
+    rss = pid_to_rss(pid, SC_PAGESIZE)
     pe = os.path.exists('/proc/{}'.format(pid))
     t1 = time()
     d = t1 - t0
     state = pid_to_state(pid)
     ma = check_mem()
 
-    vv = pid_to_cmdline(pid)
-    print(vv)
-
-    print('RP: {}  |  RSS: {} ({} %)  |  State: {}  |  time: {}  |  MemAv'
-          'ail: {}'.format(rpe, rss, round(float(rss) / (
-              rss0 + 0.0001) * 100, 1), state, round(d, 3), ma))
+    print('RP: {}  |  RSS: {} ({} %)  |  State: {}  |  time: {}  |  MemAvail: {}  | dMA {}'.format(
+        rpe, rss, round(float(rss) / (rss0 + 0.0001) * 100, 1), state, round(d, 3), ma, ma0 - ma))
 
     if pe is False:
-        print('Process {} ({}) died in {} sec'.format(pid, name, round(d, 3)))
-        exit()
+        break
+
+print('Process {} ({}) died in {} sec'.format(pid, name, round(d, 3)))
+
+
+print()
+for i in range(10):
+    sleep(0.001)
+    rpe = os.path.exists('/proc/{}/exe'.format(pid))
+    rss = pid_to_rss(pid, SC_PAGESIZE)
+    pe = os.path.exists('/proc/{}'.format(pid))
+    t1 = time()
+    d = t1 - t0
+    state = pid_to_state(pid)
+    ma = check_mem()
+
+    print('RP: {}  |  RSS: {} ({} %)  |  State: {}  |  time: {}  |  MemAvail: {}  | dMA {}'.format(
+        rpe, rss, round(float(rss) / (rss0 + 0.0001) * 100, 1), state, round(d, 3), ma, ma0 - ma))
