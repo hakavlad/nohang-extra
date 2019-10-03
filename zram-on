@@ -12,7 +12,7 @@ ALG=lzo
 echo "$ALG" > /sys/block/zram0/comp_algorithm
 
 # задаем размер zram (FRACTION - размер устройства zram0 в процентах от MemTotal)
-FRACTION=200
+FRACTION=100
 MEMORY=`perl -ne'/^MemTotal:\s+(\d+)/ && print $1*1024;' < /proc/meminfo`
 SIZE=$(( MEMORY * FRACTION / 100 ))
 

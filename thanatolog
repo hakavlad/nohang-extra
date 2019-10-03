@@ -144,7 +144,7 @@ for i in range(10):
 
 print('Send SIGKILL')
 
-#os.kill(int(pid), send_signal)
+os.kill(int(pid), send_signal)
 
 t0 = time()
 

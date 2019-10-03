@@ -55,24 +55,24 @@ def printer(old_list):
 
             print(
                 'TOTAL {}'.format(
-                    human(mem_total), 
+                    human(mem_total),
                     )
                 )
             print(
                 'N/A   {} {}'.format(
-                    human(mem_busy), 
-                    percent(mem_busy / mem_total), 
+                    human(mem_busy),
+                    percent(mem_busy / mem_total),
                     )
                 )
             print(
                 'AVAIL {} {}'.format(
-                    human(mem_available), 
-                    percent(mem_available / mem_total), 
+                    human(mem_available),
+                    percent(mem_available / mem_total),
                     )
                 )
             print(
                 'DELTA {}'.format(
-                    human(delta_mem), 
+                    human(delta_mem),
                     )
                 )
             print(
@@ -134,44 +134,44 @@ def printer(old_list):
 
             print(
                 'TOTAL {}       {}       {}'.format(
-                    human(mem_total), 
-                    human(swap_total), 
-                    human(mem_swap_total), 
+                    human(mem_total),
+                    human(swap_total),
+                    human(mem_swap_total),
                     )
                 )
             print(
                 'N/A   {} {} {} {} {} {}'.format(
-                    human(mem_busy), 
-                    percent(mem_busy / mem_total), 
-                    human(swap_busy), 
-                    percent(swap_busy / swap_total), 
-                    human(mem_swap_busy), 
-                    percent(mem_swap_busy / mem_swap_total), 
+                    human(mem_busy),
+                    percent(mem_busy / mem_total),
+                    human(swap_busy),
+                    percent(swap_busy / swap_total),
+                    human(mem_swap_busy),
+                    percent(mem_swap_busy / mem_swap_total),
                     )
                 )
             print(
                 'AVAIL {} {} {} {} {} {}'.format(
-                    human(mem_available), 
-                    percent(mem_available / mem_total), 
-                    human(swap_free), 
-                    percent(swap_free / swap_total), 
-                    human(mem_swap_free), 
-                    percent(mem_swap_free / mem_swap_total), 
+                    human(mem_available),
+                    percent(mem_available / mem_total),
+                    human(swap_free),
+                    percent(swap_free / swap_total),
+                    human(mem_swap_free),
+                    percent(mem_swap_free / mem_swap_total),
                     )
                 )
             print(
                 'DELTA {}       {}       {}'.format(
-                    human(delta_mem), 
-                    human(delta_swap), 
+                    human(delta_mem),
+                    human(delta_swap),
                     human(delta_all)
                     )
                 )
             print(
                 '{} {} {} {}'.format(
-                    old_list[3], 
-                    mem_visual, 
-                    swap_visual, 
-                    mem_swap_visual, 
+                    old_list[3],
+                    mem_visual,
+                    swap_visual,
+                    mem_swap_visual,
                     )
                 )
             print()
@@ -218,47 +218,47 @@ def printer(old_list):
 
             print(
                 'TOTAL {}       {}       {}        PROFIT {} M'.format(
-                    human(mem_total), 
-                    human(swap_total), 
-                    human(mem_swap_total), 
+                    human(mem_total),
+                    human(swap_total),
+                    human(mem_swap_total),
                     human(profit)
                     )
                 )
             print(
-                'N/A   {} {} {} {} {} {}  CR      {}'.format(
-                    human(mem_busy), 
-                    percent(mem_busy / mem_total), 
-                    human(swap_busy), 
-                    percent(swap_busy / swap_total), 
-                    human(mem_swap_busy), 
-                    percent(mem_swap_busy / mem_swap_total), 
-                    str(cr_real).rjust(7, ' ')
+                'N/A   {} {} {} {} {} {}  COMPR RATIO {}'.format(
+                    human(mem_busy),
+                    percent(mem_busy / mem_total),
+                    human(swap_busy),
+                    percent(swap_busy / swap_total),
+                    human(mem_swap_busy),
+                    percent(mem_swap_busy / mem_swap_total),
+                    str(cr_real).rjust(5, ' ')
                     )
                 )
             print(
                 'AVAIL {} {} {} {} {} {}  FULL/MT   {} %'.format(
-                    human(mem_available), 
-                    percent(mem_available / mem_total), 
-                    human(swap_free), 
-                    percent(swap_free / swap_total), 
-                    human(mem_swap_free), 
-                    percent(mem_swap_free / mem_swap_total), 
+                    human(mem_available),
+                    percent(mem_available / mem_total),
+                    human(swap_free),
+                    percent(swap_free / swap_total),
+                    human(mem_swap_free),
+                    percent(mem_swap_free / mem_swap_total),
                     percent(full / 1024 / mem_total)
                     )
                 )
             print(
                 'DELTA {}       {}       {}'.format(
-                    human(delta_mem), 
-                    human(delta_swap), 
+                    human(delta_mem),
+                    human(delta_swap),
                     human(delta_all)
                     )
                 )
             print(
                 '{} {} {} {} {}'.format(
-                    old_list[3], 
-                    mem_visual, 
-                    swap_visual, 
-                    mem_swap_visual, 
+                    old_list[3],
+                    mem_visual,
+                    swap_visual,
+                    mem_swap_visual,
                     zram_visual
                     )
                 )
@@ -274,9 +274,9 @@ def printer(old_list):
             x = swaps_raw(i)
             print(
                 '{} {} G {} %    {} G {}'.format(
-                    str(x[0]).ljust(26, ' '), 
-                    human(x[2]), 
-                    percent(x[2] / x[1]), human(x[1]), 
+                    str(x[0]).ljust(26, ' '),
+                    human(x[2]),
+                    percent(x[2] / x[1]), human(x[1]),
                     str(x[3]).rjust(10, ' ')
                     )
                 )
