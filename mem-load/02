@@ -1,0 +1,83 @@
+#!/usr/bin/env python3
+
+from random import random
+from sys import argv
+from multiprocessing import Process
+from time import monotonic
+
+
+_, n0, c, t = argv
+
+n = int(n0) * 1000 * 1000
+
+c = int(c)
+
+t = int(t)
+
+
+print('n0: ', n)
+print('c:  ', c)
+print('t:  ', t)
+
+
+
+
+
+def test():
+    print('Наполняем список (n = {}) случайными числами...'.format(n))
+
+    x = []
+    for _ in range(n):
+        x.append(random())
+
+    for i in range(c):
+        print('Чтение и запись новых значений ({}/{})'.format(i + 1, c))
+
+        # заменяем элементы списка на новые
+        for i in range(n):
+            x[i] = random()
+
+
+t1 = monotonic()
+
+
+
+a = []
+
+for p in range(t):
+    p = Process(target=test)
+    p.start()
+    a.append(p)
+
+for p in a:
+    p.join()
+
+
+t2 = monotonic()
+
+dt = round(t2 - t1, 1)
+
+
+
+print('time:', dt)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,9 @@
+#!/usr/bin/env python3
+import ctypes
+import time
+
+lib = ctypes.CDLL('libc.so.6')
+vfork = lib.vfork
+
+vfork()
+time.sleep(60)

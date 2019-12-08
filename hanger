@@ -1,0 +1,61 @@
+#!/usr/bin/env python3
+
+with open('/proc/meminfo') as f:
+    mem_list = f.readlines()
+
+mem_list_names = []
+for s in mem_list:
+    mem_list_names.append(s.split(':')[0])
+
+if mem_list_names[2] != 'MemAvailable':
+    errprint('WARNING: Your Linux kernel is too old, Linux 3.14+ requied')
+    exit(1)
+
+swap_total_index = mem_list_names.index('SwapTotal')
+swap_free_index = swap_total_index + 1
+
+mem_total = int(mem_list[0].split(':')[1][:-4])
+
+
+def check_mem_and_swap():
+    """find mem_available, swap_total, swap_free"""
+    with open('/proc/meminfo') as f:
+        for n, line in enumerate(f):
+            if n == 2:
+                mem_available = int(line.split(':')[1][:-4])
+                continue
+            if n is swap_total_index:
+                swap_total = int(line.split(':')[1][:-4])
+                continue
+            if n is swap_free_index:
+                swap_free = int(line.split(':')[1][:-4])
+                break
+    return mem_available, swap_total, swap_free
+
+
+def ad():
+    """
+    """
+    try:
+        ex.append('')
+    except MemoryError:
+        pass
+
+ex = []
+n = 0
+
+while True:
+
+    try:
+        n += 1
+        mem_available, swap_total, swap_free = check_mem_and_swap()
+        x = mem_available + swap_free
+        # print('MA+SF:', x, n)
+        if x < 100:
+            pass
+        elif x < 10000:
+            ex.append(bytearray(1000))
+        else:
+            ex.append(bytearray(100000))
+    except MemoryError:
+        ad()

@@ -1,0 +1,45 @@
+#!/usr/bin/env python3
+
+from random import random
+from sys import argv
+from multiprocessing import Process
+from time import monotonic, sleep
+
+path = '/media/user/4d0a188f-1e50-4c26-b0e1-4be70e082f73/user/load/1'
+
+
+
+
+
+
+
+
+"""
+n = 10 * 1000000 #  10 - 174M файл, 187M RSS
+with open(path, 'a') as f:
+    for _ in range(n):
+        f.write(str(random()))
+"""
+
+
+"""
+with open(path, 'r') as f:
+    x = f.readlines()
+"""
+
+y = []
+
+def add():
+    with open(path, 'r') as f:
+        return f.readlines()
+
+
+
+for i in range(45):
+    y.append(add())
+    print(i + 1)
+    sleep(1)
+
+print('OK')
+sleep(999)
+

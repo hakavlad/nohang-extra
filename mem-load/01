@@ -1,0 +1,41 @@
+#!/usr/bin/env python3
+
+from random import random
+from sys import argv
+from multiprocessing import Process
+
+
+_, n0, c = argv
+
+n = int(n0) * 1000 * 1000
+
+c = int(c)
+
+
+def test():
+
+    print('n0: ', n)
+    print('c:  ', c)
+    print('Наполняем список (n = {}) случайными числами...'.format(n))
+
+    x = []
+    for _ in range(n):
+        x.append(random())
+
+    for i in range(c):
+        print('Чтение и запись новых значений ({}/{})'.format(i + 1, c))
+
+        # заменяем элементы списка на новые
+        for i in range(n):
+            x[i] = random()
+
+
+
+
+
+
+
+p = Process(target=test, args=()).start()
+p2 = Process(target=test, args=()).start()
+
+

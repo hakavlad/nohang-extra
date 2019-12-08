@@ -1,0 +1,117 @@
+#!/usr/bin/env python3
+
+
+import os
+import ctypes
+from time import sleep
+from sys import exit
+from signal import signal, SIGKILL, SIGTERM, SIGINT, SIGQUIT, SIGHUP
+
+
+
+
+
+
+
+
+
+
+
+def print_mem():
+    """
+    """
+    pass
+
+
+def disk_sleep():
+    """
+    """
+    lib = ctypes.CDLL('libc.so.6')
+    vfork = lib.vfork
+    vfork()
+    sleep(10)
+
+
+
+
+
+
+
+
+
+print('Выберите вариант из списка ниже. Ctrl C to enter в меню')
+print('0 - очистить накопления при их наличии')
+print('1 запустить бесконечное потребление, предложив выбрать скорость потребления и энтропию')
+print('2 запустить ограниченное потребление заданного числа гигов')
+print('3 жрать память пока количество доступной памяти не опустится ниже заданного')
+print('4 перевести процесс в состояние disk sleep')
+print('9 выход')
+
+
+li = input(': ')
+
+if li == '0':
+    x = lim()
+    ex_list.append(x)
+elif li == '1':
+    inf()
+elif li == '2':
+    ex_list = []
+    x = 0
+    y = 0
+elif li == '3':
+    y = lim2avail()
+    ex_list.append(y)
+elif li == '4':
+    disk_sleep()
+elif li == '9':
+    exit()
+else:
+    exit()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
