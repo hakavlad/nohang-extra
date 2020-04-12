@@ -1,0 +1,24 @@
+#!/usr/bin/env python3
+
+
+
+
+x = 'qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq'\
+    'qqqqqqqqqqqqqqqqzzzzzzzzzzzzzzzzzzz'
+
+
+
+print(x)
+
+
+
+
+
+
+
+
+
+
+
+
+

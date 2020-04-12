@@ -1,0 +1,8 @@
+#!/usr/bin/env python3
+
+from sys import argv
+from time import sleep
+
+argv.append(bytearray(1024 * 1024 * int(argv[1])))
+
+sleep(3600)

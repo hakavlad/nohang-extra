@@ -144,7 +144,7 @@ ma0 = ma
 
 
 while True:
-    sleep(0.001)
+    #sleep(0.001)
     rpe = os.path.exists('/proc/{}/exe'.format(pid))
     rss = pid_to_rss(pid, SC_PAGESIZE)
     pe = os.path.exists('/proc/{}'.format(pid))
