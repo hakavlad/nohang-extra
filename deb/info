@@ -1,0 +1,4 @@
+make install DESTDIR=deb/package BINDIR=/usr/bin SYSTEMDUNITDIR=/lib/systemd/system
+cd deb
+fakeroot dpkg-deb --build package
+sudo dpkg -i package.deb
