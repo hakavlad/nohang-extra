@@ -1,0 +1,85 @@
+#!/usr/bin/env python3
+
+import os
+from time import sleep
+from ctypes import CDLL
+
+
+def mlockall():
+    MCL_CURRENT = 1
+    MCL_FUTURE = 2
+    MCL_ONFAULT = 4
+    libc = CDLL('libc.so.6', use_errno=True)
+    result = libc.mlockall(MCL_CURRENT | MCL_FUTURE | MCL_ONFAULT)
+    if result != 0:
+        libc.mlockall(MCL_CURRENT | MCL_FUTURE)
+
+
+def rline1(path):
+    try:
+        with open(path) as f:
+            for line in f:
+                return line.rstrip()
+    except Exception as e:
+        print(e)
+        exit(1)
+
+
+def check_mem_and_swap():
+    with open('/proc/meminfo') as f:
+        for n, line in enumerate(f):
+            if n == 0:
+                mem_total = int(line.split(':')[1][:-4]) / 1024
+                continue
+            if n == swap_total_index:
+                swap_total = int(line.split(':')[1][:-4]) / 1024
+                continue
+            if n == swap_free_index:
+                swap_free = int(line.split(':')[1][:-4]) / 1024
+                break
+    return mem_total, swap_total, swap_free
+
+
+with open('/proc/meminfo') as f:
+    mem_list = f.readlines()
+
+mem_list_names = []
+
+for s in mem_list:
+    mem_list_names.append(s.split(':')[0])
+
+swap_total_index = mem_list_names.index('SwapTotal')
+swap_free_index = swap_total_index + 1
+
+SC_PAGESIZE = os.sysconf(os.sysconf_names['SC_PAGESIZE'])
+
+
+mlockall()
+
+
+while True:
+    mt, st, sf = check_mem_and_swap()
+    su = st - sf + 0.001
+    pool_total_size = int(
+        rline1('/sys/kernel/debug/zswap/pool_total_size')) / 1024**2 + 0.001
+    stored_pages = int(
+        rline1('/sys/kernel/debug/zswap/stored_pages')) * SC_PAGESIZE / 1024**2
+    cr = stored_pages / pool_total_size
+    zs = pool_total_size / mt
+
+    print(
+        'pool: {} MiB ({}% MemTotal) | stored: {} MiB ({}% SwapUsed)'
+        ' | compr_ratio: {}'.format(
+            round(pool_total_size, 1),
+            round(pool_total_size / mt * 100, 1),
+            round(stored_pages, 1),
+            round(stored_pages / su * 100, 1),
+            round(cr, 1)
+        )
+    )
+
+    try:
+        sleep(2)
+    except KeyboardInterrupt:
+        print()
+        exit()
