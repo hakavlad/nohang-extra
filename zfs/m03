@@ -1,0 +1,158 @@
+#!/usr/bin/env python3
+
+import os
+from ctypes import CDLL
+from time import sleep, monotonic, process_time
+from operator import itemgetter
+from sys import stdout, stderr, argv, exit
+from re import search
+from sre_constants import error as invalid_re
+from signal import signal, SIGKILL, SIGTERM, SIGINT, SIGQUIT, SIGHUP, SIGUSR1
+
+
+
+###############################################################################
+
+def mlockall():
+    """
+    """
+    MCL_CURRENT = 1
+    MCL_FUTURE = 2
+    MCL_ONFAULT = 4
+
+    libc = CDLL('libc.so.6', use_errno=True)
+    result = libc.mlockall(
+        MCL_CURRENT | MCL_FUTURE | MCL_ONFAULT
+    )
+
+    if result != 0:
+        result = libc.mlockall(
+            MCL_CURRENT | MCL_FUTURE
+        )
+
+
+
+
+
+def check_mem_and_swap():
+    """find mem_available, swap_total, swap_free"""
+    with open('/proc/meminfo') as f:
+        for n, line in enumerate(f):
+            if n == 2:
+                mem_available = int(line.split(':')[1][:-4])
+                continue
+            if n == swap_total_index:
+                swap_total = int(line.split(':')[1][:-4])
+                continue
+            if n == swap_free_index:
+                swap_free = int(line.split(':')[1][:-4])
+                break
+    return mem_available, swap_total, swap_free
+
+
+
+def arcstats():
+    """
+    """
+    with open(arcstats_path , 'rb') as f:
+        a_list = f.read().decode().split('\n')
+
+    for n, line in enumerate(a_list):
+        if n == c_min_index:
+            c_min = int(line.rpartition(' ')[2]) / 1024
+        elif n == size_index:
+            size = int(line.rpartition(' ')[2]) / 1024
+
+        elif n == arc_meta_used_index:
+            arc_meta_used = int(line.rpartition(' ')[2]) / 1024
+
+        elif n == arc_meta_min_index:
+            arc_meta_min = int(line.rpartition(' ')[2]) / 1024
+
+        else:
+            continue
+
+    return c_min, size, arc_meta_used, arc_meta_min
+
+###############################################################################
+
+
+with open('/proc/meminfo') as f:
+    mem_list = f.readlines()
+
+mem_list_names = []
+
+for s in mem_list:
+    mem_list_names.append(s.split(':')[0])
+
+if mem_list_names[2] != 'MemAvailable':
+    errprint('Your Linux kernel is too old, Linux 3.14+ requied\nExit')
+    exit(1)
+
+swap_total_index = mem_list_names.index('SwapTotal')
+swap_free_index = swap_total_index + 1
+
+# arcstats_path = '/proc/spl/kstat/zfs/arcstats'
+arcstats_path = './arcstats'
+
+ZFS = os.path.exists(arcstats_path)
+
+if not ZFS:
+    print('arcstats not found')
+    exit()
+
+# find indexes
+with open(arcstats_path , 'rb') as f:
+    a_list = f.read().decode().split('\n')
+for n, line in enumerate(a_list):
+    if line.startswith('c_min '):
+        c_min_index = n
+
+    elif line.startswith('size '):
+        size_index = n
+
+
+    elif line.startswith('arc_meta_used '):
+        arc_meta_used_index = n
+
+
+    elif line.startswith('arc_meta_min '):
+        arc_meta_min_index = n
+
+    else:
+        continue
+
+
+s = 1
+
+# MemAvailable: 6569, arcstats_size: 442, arcstats_c_min: 62, arc_meta_min: 16, zfs_available: 364, NewMemAvailable: 6933
+
+mlockall()
+
+
+print('Values in MiB')
+
+
+while True:
+
+    ma, _, _ = check_mem_and_swap()
+
+    c_min, size, arc_meta_used, arc_meta_min = arcstats()
+
+    zfs_available = size + arc_meta_used - c_min - arc_meta_min
+
+    print('MA: {}, size: {}, c_min: {}, meta_used: {}, meta_min: {}, zfs_available: {}, NewMA: {}'.format(
+        round(ma / 1024),
+        round(size / 1024),
+        round(c_min / 1024),
+        round(arc_meta_used / 1024),
+        round(arc_meta_min / 1024),
+        round(zfs_available / 1024),
+        round((ma + zfs_available) / 1024)
+        ))
+
+    try:
+        sleep(s)
+    except KeyboardInterrupt:
+        exit()
+
