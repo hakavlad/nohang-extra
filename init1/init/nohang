@@ -9,39 +9,20 @@
 ### END INIT INFO
 
 
-PATH=/sbin:/usr/local/sbin:/bin:/usr/bin
+PATH=/sbin:/usr/sbin:/bin:/usr/bin
 DESC=nohang
 NAME=nohang
-DAEMON=/usr/local/sbin/$NAME
+DAEMON=/usr/sbin/$NAME
 PIDFILE=/run/$NAME.pid
 LOGFILE=/var/log/$NAME.log
 USER="root"
 
-
-
-
-
-
-
-
-
 # Exit if the package is not installed
 [ -x $DAEMON ] || exit 0
 
-
-
-
-
-$DAEMON_OPTS="--monitor --config /usr/local/etc/nohang.conf"
-
-
-
-
-
-
-
-
-
+[ -r /etc/default/$NAME ] && . /etc/default/$NAME
+. /lib/init/vars.sh
+. /lib/lsb/init-functions
 
 # Function that starts the daemon/service
 do_start()
@@ -61,17 +42,6 @@ do_start()
   return $?
 }
 
-
-
-
-
-
-
-
-
-
-
-
 # Function that stops the daemon/service
 do_stop()
 {
@@ -88,16 +58,6 @@ do_stop()
   rm -f $PIDFILE
   return "$RETVAL"
 }
-
-
-
-
-
-
-
-
-
-
 
 case "$1" in
   start)
