@@ -7,38 +7,91 @@ from sys import stdout, stderr, argv, exit
 from signal import signal, SIGKILL, SIGTERM, SIGINT, SIGQUIT, SIGHUP
 
 
+"""
+вопрос еще вот в чем: расслаблять лимит на выходе.
+
+так сейчас лимит может сильно ужаться.
+
+а надо: при росте доступной убирать лимит.
+
+далее: min_common_memory_max - вот это проверять.
+конвертир это в байты для дальнейш сравнения.
+
+а вообще-то уже ж решено: нахрена дублировать.
+создаешь нов цикл.
 
 
+--------------------------------------------------------
+[MemAvailable: 100.0%]  user.slice  system.slice   summa
+  memory.current            100.0%        100.0%  100.0%
+  memory.max                100.0%        100.0%
+--------------------------------------------------------
+[MemAvailable: 100.0%]  user.slice  system.slice   summa
+  memory.current            100.0%        100.0%  100.0%
+  memory.max                100.0%        100.0%
+--------------------------------------------------------
+[MemAvailable: 100.0%]  user.slice  system.slice   summa
+  memory.current            100.0%        100.0%  100.0%
+  memory.max                100.0%        100.0%
+OK, keep available memory, do nothing
+--------------------------------------------------------
+[MemAvailable: 100.0%]  user.slice  system.slice   summa
+  memory.current            100.0%        100.0%  100.0%
+  memory.max                100.0%        100.0%
+Delta: 0.1% (10 MiB); set limit for user.slice
+New memory.max will be 100.0%
+--------------------------------------------------------
+
+вынести в конф:
+
+интервалы:
+- без нагрузки, фция с адаптивом
+- три этапа под нагрузкой
+- макс шаг дельты
+
+- шары для слайсов: user_fraction, system_fraction
+
+- число итераций для выхода из коррекции
+
+- мб явно устанавл средний порог.
+
+структуру уполядочить:
+- конфиг
+- фции
+- инициализация
+- главн цикл
+
+"""
+
+
+###############################################################################
+
+# CONFIG
 
 keep_mem_available_percent = 3
 factor = 0.8
 
 min_common_memory_max = 40
 
-interval = 0.5
+interval = 1
 # cg_list = ['user.slice', 'system.slice']
 
-
-
-min_swap_free_kb = 204800
+min_swap_free_kb = 204800 # 200M
 # установить как двойной процент. но не ниже 100м, как вар.
 
 
+max_delta_kb = 40000
 
 
-with open('/proc/meminfo') as f:
-    mem_list = f.readlines()
-mem_list_names = []
-for s in mem_list:
-    mem_list_names.append(s.split(':')[0])
-try:
-    mem_available_index = mem_list_names.index('MemAvailable')
-except ValueError:
-    errprint('ERROR: your Linux kernel is too old, Linux 3.14+ required')
-swap_total_index = mem_list_names.index('SwapTotal')
-swap_free_index = mem_list_names.index('SwapFree')
-mem_total = mt = int(mem_list[0].split(':')[1][:-4])
-mt_b = mt * 1024
+# no_swap_interval = 10
+# low_swap_interval = 5
+
+exit_num = 30
+
+
+###############################################################################
+
+# FN
 
 def mlockall():
     """
@@ -59,29 +112,16 @@ def mlockall():
     else:
         print('All memory locked with MCL_CURRENT | MCL_FUTURE | MCL_ONFAULT')
 
-mlockall()
-
-
-use_mem_max_path = '/sys/fs/cgroup/user.slice/memory.max'
-use_mem_cur_path = '/sys/fs/cgroup/user.slice/memory.current'
-
-sys_mem_max_path = '/sys/fs/cgroup/system.slice/memory.max'
-sys_mem_cur_path = '/sys/fs/cgroup/system.slice/memory.current'
-
-
 
 def rline(path):
     """
+    path to int
     """
     with open(path, 'rb', buffering=0) as f:
         try:
             return int(f.read())
         except ValueError:
             return 0
-
-
-fd = dict()
-fd['mi'] = open('/proc/meminfo', 'rb', buffering=0)
 
 
 def check_mem_and_swap():
@@ -98,51 +138,6 @@ def check_mem_and_swap():
     return ma, st, sf
 
 
-
-
-
-
-
-# keep_mem_available_percent - получить абс пороги, 2шт.
-
-keep_mem_available_max_kb = mem_total / 100 * keep_mem_available_percent
-keep_mem_available_min_kb = keep_mem_available_max_kb * factor
-
-
-
-
-
-keep_mid_kb = (keep_mem_available_max_kb + keep_mem_available_min_kb) / 2
-
-
-
-
-
-
-
-min_common_memory_max_b = mem_total / 100 * min_common_memory_max * 1024
-
-
-
-
-default_memory_max_b = mt * (100 - keep_mem_available_percent) * 1024
-
-#m_max_b = int(mt * memory_max_max / 100 * 1024)
-#m_min_b = int(mt * memory_max_min / 100 * 1024)
-
-
-
-
-
-
-
-
-
-# на старте сразу распечат мемтотал и пороги
-
-
-print('keep_mem_available_max: {}'.format(round(keep_mem_available_percent, 1)))
-
 def write(path, string):
     """
     """
@@ -156,157 +151,8 @@ def percent(num):
     return round(num * 100, 1)
 
 
-def correction():
-    """
-    у нас есть: доступная память и своп
-    память слайсов - размер и лимиты
-
-    печат общ обем слайсов.
-    common_current: 55%
-    и по отдельности тоже.
-
-    еще вар: всегда работай с процентами мемтотал.
-
-    """
-    x = 0
-
-    while True:
-
-        stdout.flush()
-
-        #print('x', x)
-
-        ma, st, sf = check_mem_and_swap()
-        print('MA, %:', percent(ma/mem_total))
-
-
-        if sf < min_swap_free_kb:
-            print('swap_free < min_swap_free, do nothing')
-            sleep(interval * 3)
-            continue
-            # ?
-
-
-
-        if ma < keep_mid_kb:
-            x = 0
-            # время имплемента
-
-            #use_mem_max = rline(use_mem_max_path)
-            use_mem_cur = rline(use_mem_cur_path)
-            #sys_mem_max = rline(sys_mem_max_path)
-            sys_mem_cur = rline(sys_mem_cur_path)
-            print('current, % [user: {} | system: {} | common: {}]'.format(
-                percent(use_mem_cur/mt_b),
-                percent(sys_mem_cur/mt_b),
-                percent((use_mem_cur+sys_mem_cur)/mt_b)
-                )
-            )
-
-            if use_mem_cur + sys_mem_cur <=  min_common_memory_max_b:
-                return None
-
-            """
-            доступной ниже минимума. пора корректировать.
-            как корректир? во-первых выбери самый жирный слайс - от него и отнимай.
-
-            сколько отнимать?
-            как минимум для остановки безобразия вписываешь current в max.  + отнимаешь
-            величину: дельта между имеющимся и желаемым зазором.
-            вот найди зазор.
-
-            напр 392 нужно. а у нас 200 доступная. вывод.
-
-            max = cur - (392 - 200)
-
-            """
-
-            delta = (keep_mem_available_max_kb - ma)
-
-
-            if delta > 20480:
-                delta = 20480
-
-
-            # delta = 0
-
-            print('delta:', delta / 1024)
-            print('delta, %:', percent(delta/mt))
-
-
-            if use_mem_cur > sys_mem_cur:
-                w_path = use_mem_max_path
-                mc = use_mem_cur
-                print('set limit for user')
-            else:
-                w_path = sys_mem_max_path
-                mc = sys_mem_cur
-                print('set limit for system')
-
-            mm_new = mc - delta * 1024
-
-
-
-
-            print('new memory.max:', percent(mm_new/mt_b))
-
-
-            write(w_path, '{}\n'.format(int(mm_new)))
-
-        elif ma < keep_mem_available_max_kb:
-            x = 0
-            print('Поддерживаем доступную память, сидим ровно')
-            sleep(interval * 3)
-
-        else:
-
-
-
-            # вар: не снимать лимиты сразу, чтоб избежать скачков.
-            # вар снятия лимитов: напр, 10 сек подряд давления нет.
-
-
-            x += 1
-
-            if x >= 30:
-
-                print('Много доступной памяти, снимаем лимиты полностью, выход из цикла')
-                write(use_mem_max_path, '{}\n'.format(default_memory_max_b))
-                write(sys_mem_max_path, '{}\n'.format(default_memory_max_b))
-
-                break
-
-            sleep(interval)
-
-
-
-
-
-    """
-    вопрос еще вот в чем: расслаблять лимит на выходе.
-
-    так сейчас лимит может сильно ужаться.
-
-    а надо: при росте доступной убирать лимит.
-
-    далее: min_common_memory_max - вот это проверять.
-    конвертир это в байты для дальнейш сравнения.
-
-    а вообще-то уже ж решено: нахрена дублировать.
-    создаешь нов цикл.
-
-
-    """
-
-
-
-
-write(use_mem_max_path, '{}\n'.format(default_memory_max_b))
-write(sys_mem_max_path, '{}\n'.format(default_memory_max_b))
-
-
-################################################3
-
+def adaptive_sleep():
+    pass
 
 def signal_handler(signum, frame):
     """
@@ -336,6 +182,191 @@ def signal_handler(signum, frame):
     print('Exit')
     exit()
 
+def correction():
+    """
+    у нас есть: доступная память и своп
+    память слайсов - размер и лимиты
+
+    печат общ обем слайсов.
+    common_current: 55%
+    и по отдельности тоже.
+
+    еще вар: всегда работай с процентами мемтотал.
+
+    """
+    x = 0
+
+    while True:
+
+        stdout.flush()
+
+        print('---------------------------------')
+
+
+        #print('x', x)
+
+        ma, st, sf = check_mem_and_swap()
+        print('MemAvailable, %:', percent(ma/mem_total))
+
+
+        if sf < min_swap_free_kb:
+            print('swap_free < min_swap_free, do nothing')
+            sleep(interval * 3)
+            continue
+            # ?
+
+        if ma < keep_mem_available_min_kb:
+            x = 0
+            # время имплемента
+
+            #use_mem_max = rline(use_mem_max_path)
+            use_mem_cur = rline(use_mem_cur_path)
+            #sys_mem_max = rline(sys_mem_max_path)
+            sys_mem_cur = rline(sys_mem_cur_path)
+            print('current, % [user.slice: {} | system.slice: {} | common: {}]'.format(
+                percent(use_mem_cur/mt_b),
+                percent(sys_mem_cur/mt_b),
+                percent((use_mem_cur+sys_mem_cur)/mt_b)
+                )
+            )
+
+            # слайсы маленькие, дальше не сжимаем
+            if use_mem_cur + sys_mem_cur <=  min_common_memory_max_b:
+                return None
+
+            """
+            доступной ниже минимума. пора корректировать.
+            как корректир? во-первых выбери самый жирный слайс - от него и отнимай.
+
+            сколько отнимать?
+            как минимум для остановки безобразия вписываешь current в max.  + отнимаешь
+            величину: дельта между имеющимся и желаемым зазором.
+            вот найди зазор.
+
+            напр 392 нужно. а у нас 200 доступная. вывод.
+
+            max = cur - (392 - 200)
+            """
+
+            delta = (keep_mid_kb - ma) / 4
+
+            if delta > max_delta_kb:
+                delta = max_delta_kb
+
+            # delta = 0
+
+            print('delta:', delta / 1024)
+            print('delta, %:', percent(delta/mt))
+
+
+            if use_mem_cur > sys_mem_cur:
+                w_path = use_mem_max_path
+                mc = use_mem_cur
+                print('set limit for user')
+            else:
+                w_path = sys_mem_max_path
+                mc = sys_mem_cur
+                print('set limit for system')
+
+            mm_new = mc - delta * 1024
+
+            print('new memory.max:', percent(mm_new/mt_b))
+
+            write(w_path, '{}\n'.format(int(mm_new)))
+
+        elif ma < keep_mem_available_max_kb:
+            x = 0
+            print('Поддерживаем доступную память, сидим ровно')
+            sleep(interval * 3)
+
+        else:
+
+            # вар: не снимать лимиты сразу, чтоб избежать скачков.
+            # вар снятия лимитов: напр, 10 сек подряд давления нет.
+
+            x += 1
+
+            if x >= exit_num:
+
+                print('Много доступной памяти, снимаем лимиты полностью, выход из цикла')
+                write(use_mem_max_path, '{}\n'.format(default_memory_max_b))
+                write(sys_mem_max_path, '{}\n'.format(default_memory_max_b))
+
+                break
+
+            sleep(interval)
+
+
+###############################################################################
+
+
+with open('/proc/meminfo') as f:
+    mem_list = f.readlines()
+mem_list_names = []
+for s in mem_list:
+    mem_list_names.append(s.split(':')[0])
+try:
+    mem_available_index = mem_list_names.index('MemAvailable')
+except ValueError:
+    errprint('ERROR: your Linux kernel is too old, Linux 3.14+ required')
+swap_total_index = mem_list_names.index('SwapTotal')
+swap_free_index = mem_list_names.index('SwapFree')
+mem_total = mt = int(mem_list[0].split(':')[1][:-4])
+mt_b = mt * 1024
+
+
+mlockall()
+
+
+use_mem_max_path = '/sys/fs/cgroup/user.slice/memory.max'
+use_mem_cur_path = '/sys/fs/cgroup/user.slice/memory.current'
+
+sys_mem_max_path = '/sys/fs/cgroup/system.slice/memory.max'
+sys_mem_cur_path = '/sys/fs/cgroup/system.slice/memory.current'
+
+
+if not os.path.exists(use_mem_max_path):
+    print('ERROR: {} does not exist'.format(use_mem_max_path))
+    exit(1)
+
+if not os.path.exists(sys_mem_cur_path):
+    print('ERROR: {} does not exist'.format(sys_mem_cur_path))
+    exit(1)
+
+
+
+
+
+# keep_mem_available_percent - получить абс пороги, 2шт.
+
+keep_mem_available_max_kb = mem_total / 100 * keep_mem_available_percent
+keep_mem_available_min_kb = keep_mem_available_max_kb * factor
+
+keep_mid_kb = (keep_mem_available_max_kb + keep_mem_available_min_kb) / 2
+
+min_common_memory_max_b = mem_total / 100 * min_common_memory_max * 1024
+
+default_memory_max_b = mt * (100 - keep_mem_available_percent) * 1024
+
+#m_max_b = int(mt * memory_max_max / 100 * 1024)
+#m_min_b = int(mt * memory_max_min / 100 * 1024)
+
+# на старте сразу распечат мемтотал и пороги
+
+print('keep_mem_available_max: {}'.format(round(keep_mem_available_percent, 1)))
+
+try:
+    write(use_mem_max_path, '{}\n'.format(default_memory_max_b))
+    write(sys_mem_max_path, '{}\n'.format(default_memory_max_b))
+except Exception as e:
+    print(e)
+    exit(1)
+
+
+fd = dict()
+fd['mi'] = open('/proc/meminfo', 'rb', buffering=0)
+
+
 m0 = monotonic()
 pt0 = process_time()
 
@@ -359,8 +390,8 @@ for i in sig_list:
 
 while True:
     ma, st, sf = check_mem_and_swap()
-    #print('MA, %:', percent(ma/mem_total))
-    if ma < keep_mem_available_min_kb:
+    print('MemAvailable: {}%'.format(percent(ma/mem_total)))
+    if ma < keep_mid_kb:
         correction()
     stdout.flush()
     sleep(interval)
