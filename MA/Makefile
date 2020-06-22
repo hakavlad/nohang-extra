@@ -33,7 +33,6 @@ daemon-reload:
 	-systemctl daemon-reload
 
 install: base units chcon daemon-reload
-	-systemctl restart memavaild
 
 uninstall-base:
 	rm -fv $(DESTDIR)$(SBINDIR)/memavaild
