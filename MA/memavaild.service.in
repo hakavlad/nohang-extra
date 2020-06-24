@@ -1,6 +1,5 @@
 [Unit]
 Description=memavaild
-After=system.slice
 
 [Service]
 ExecStart=:TARGET_SBINDIR:/memavaild
