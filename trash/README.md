@@ -66,7 +66,7 @@ Video: `nohang` prevents out of memory or stops GUI freezeng:
 - [https://youtu.be/ChTNu9m7uMU](https://youtu.be/ChTNu9m7uMU) – just old demo without swap space.
 - [https://youtu.be/UCwZS5uNLu0](https://youtu.be/UCwZS5uNLu0) – running multiple fast memory hogs at the same time without swap space.
 - [https://youtu.be/PLVWgNrVNlc](https://youtu.be/PLVWgNrVNlc) – opening multiple chromium tabs with 2.3 GiB memory and 1.8 GiB swap space on zram.
-- [https://youtu.be/Y6GJqFE_ke4](https://youtu.be/Y6GJqFE_ke4) - nohang stops GUI freezing during intense swapping (`stress` was executed) with `psi_checking_enabled=True` (see config and executed commands in video's description).
+- [https://youtu.be/Y6GJqFE_ke4](https://youtu.be/Y6GJqFE_ke4) – nohang stops GUI freezing during intense swapping (`stress` was executed) with `psi_checking_enabled=True` (see the config and executed commands in video's description).
 
 ## Requirements
 
@@ -101,7 +101,7 @@ To show GUI notifications (optional):
 
 ## nohang vs nohang-desktop
 
-`nohang` comes with two configs: `nohang.conf` and `nohang-desktop.conf`. `nohang` comes with two systemd service unit files: `nohang.service` and `nohang-desktop.service`. Choose one.
+`nohang` comes with two config files (`nohang.conf` and `nohang-desktop.conf`) and with two systemd service unit files (`nohang.service` and `nohang-desktop.service`).
 
 `nohang.conf` provides vanilla default settings without PSI checking enabled, without any badness correction and without GUI notifications enabled.
 
@@ -112,6 +112,11 @@ To show GUI notifications (optional):
 - GUI low memory warnings enabled (set `low_memory_warnings_enabled=True`)
 - GUI alerts what process was terminated with corrective action (set `post_action_gui_notifications=True`).
 
+`nohang.service` starts the daemon with the config `nohang.conf`.
+
+`nohang-desktop.service` starts the daemon with the config `nohang-desktop.conf`.
+
+Choose (enable and start) one (of course, the package can be installed for the possibility of using additional tools: `oom-sort`, `psi2log`, `psi-top`).
 
 ## How to install
 
