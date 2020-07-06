@@ -108,15 +108,15 @@ To show GUI notifications (optional):
 `nohang-desktop.conf` provides default settings optimized for desktop usage:
 
 - `psi_checking_enabled=True` is set to prevent long-term freezeng during intense swapping. It works if PSI metrics is provided by the kernel. Note that default settings may be not optimal for you.
-- Prevention of the killing of processes, the destruction of which can lead to the death of all processes in the session (Xorg, Xwayland, display managers, window managers etc).
 - GUI low memory warnings enabled (set `low_memory_warnings_enabled=True`)
 - GUI alerts what process was terminated with corrective action (set `post_action_gui_notifications=True`).
+- Prevention of the killing of processes, the destruction of which can lead to the death of all processes in the session (Xorg, Xwayland, display managers, window managers etc).
 
 `nohang.service` starts the daemon with the config `nohang.conf`.
 
 `nohang-desktop.service` starts the daemon with the config `nohang-desktop.conf`.
 
-Choose (enable and start) one (of course, the package can be installed for the possibility of using additional tools: `oom-sort`, `psi2log`, `psi-top`).
+Choose (enable and start) one (of course, of course, you can enable/start nothing: the package can be installed only for using additional tools: `oom-sort`, `psi2log`, `psi-top`).
 
 ## How to install
 
