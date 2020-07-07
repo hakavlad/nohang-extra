@@ -116,7 +116,7 @@ To show GUI notifications (optional):
 
 `nohang-desktop.service` starts the daemon with the config `nohang-desktop.conf`.
 
-Choose (enable and start) one (of course, of course, you can enable/start nothing: the package can be installed only for using additional tools: `oom-sort`, `psi2log`, `psi-top`).
+Choose (enable and start) one (of course, you can enable/start nothing: the package can be installed only for using additional tools: `oom-sort`, `psi2log`, `psi-top`).
 
 ## How to install
 
