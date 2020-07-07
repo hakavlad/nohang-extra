@@ -20,25 +20,21 @@ MemorySwapMax=100M
 
 UMask=0027
 ProtectSystem=strict
-ReadOnlyPaths=/
 ReadWritePaths=/var/log
 InaccessiblePaths=/home /root
 ProtectKernelTunables=true
 ProtectKernelModules=true
 ProtectControlGroups=true
+ProtectHostname=true
 
-
+#ProtectClock=true
 #PrivateDevices=true
 #ProtectKernelLogs=true
-#ProtectHostname=true
-#ProtectClock=true
 
-
-
-PrivateTmp=true
 MemoryDenyWriteExecute=yes
 RestrictNamespaces=yes
 LockPersonality=yes
+PrivateTmp=true
 
 # Capabilities whitelist:
 # CAP_KILL is required to send signals
