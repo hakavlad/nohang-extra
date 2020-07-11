@@ -1,6 +1,7 @@
   This is the configuration file of the nohang daemon.
   The configuration includes the following sections:
 
+    0. Check kernel messages for OOM events
     1. Common zram settings
     2. Common PSI settings
     3. Poll rate
@@ -22,11 +23,15 @@
 
 ###############################################################################
 
-    0. Check kernel messages for OOM events
+##  0. Check kernel messages for OOM events
 
 @check_kmsg
+##  Type: boolean
+##  Comment/uncomment to disable/enable checking kmsg for OOM events
 
-@debug_kmsg
+#   @debug_kmsg
+##  Type: boolean
+##  Comment/uncomment to disable/enable debug checking kmsg
 
 ###############################################################################
 

@@ -50,8 +50,8 @@ CAP_DAC_READ_SEARCH CAP_DAC_OVERRIDE CAP_AUDIT_WRITE CAP_SETUID CAP_SETGID \
 CAP_SYS_RESOURCE CAP_SYSLOG
 
 # `PrivateNetwork=true` breaks GUI notifications on oldstable distros
-#   (Debian 8, CentOS 7, Linux Mint 18)
-# On modern distros you can set PrivateNetwork=true for security reasons
+# (Debian 8, CentOS 7, Linux Mint 18). On modern distros you can set
+# PrivateNetwork=true for security reasons.
 #PrivateNetwork=true
 
 # Set realtime CPU scheduling policy if you want

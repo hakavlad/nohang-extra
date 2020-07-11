@@ -3955,6 +3955,9 @@ def check_kmsg_fn():
     3,591,248095206,-;Out of memory: Kill process 1061 (tail) score 917 or sacr
      ifice child
 
+    3,1699,7208057400,-;Out of memory: Killed process 9277 (tail) total-vm:7837
+     24kB, anon-rss:566796kB, file-rss:1508kB, shmem-rss:0kB, UID:1000
+
     3,728,398101038,-;Memory cgroup out of memory: Killed process 2497 (tail) t
      otal-vm:6468944kB, anon-rss:3013188kB, file-rss:1676kB, shmem-rss:0kB, UID
      : 1000 pgtables:12300kB oom_score_adj:0
@@ -4020,8 +4023,7 @@ def check_kmsg_fn():
                 sleep(sleep_at_broken_pipe)
                 continue
 
-            if (s[0:2] == '3,' and 'ut of memory: Kill' in s and
-                    'score' in s):
+            if (s[:2] == '3,' and 'ut of memory: Kill' in s):
 
                 if debug_kmsg:
                     log('debug kmsg: {}'.format(s[:-1]))

@@ -36,6 +36,7 @@ This changelog is outdated. It will be updated later.
     - `oom-sort`
     - `psi-top`
     - `psi2log`
+- Add option: check kernel messages for OOM events, log it, send notifications after OOM events, prevent double-kills after OOM events
 - Improve poll rate algorithm
 - Fixed Makefile for installation on CentOS 7 (remove gzip `-k` option).
 - Added `max_post_sigterm_victim_lifetime` option: send SIGKILL to the victim if it doesn't respond to SIGTERM for a certain time
