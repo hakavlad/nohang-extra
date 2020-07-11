@@ -41,16 +41,16 @@ DevicePolicy=closed
 # CAP_SYS_PTRACE is required to check /proc/[pid]/exe realpathes
 # CAP_DAC_READ_SEARCH is required to read /proc/[pid]/environ files
 # CAP_DAC_OVERRIDE fixes #94
-# CAP_DAC_READ_SEARCH CAP_AUDIT_WRITE CAP_SETUID CAP_SETGID CAP_SYS_RESOURCE \
-are required to send GUI notifications
+# CAP_DAC_READ_SEARCH CAP_AUDIT_WRITE CAP_SETUID CAP_SETGID CAP_SYS_RESOURCE
+#   are required to send GUI notifications
 # CAP_SYSLOG is required to check /dev/kmsg for OOM events
 
 CapabilityBoundingSet=CAP_KILL CAP_IPC_LOCK CAP_SYS_PTRACE \
 CAP_DAC_READ_SEARCH CAP_DAC_OVERRIDE CAP_AUDIT_WRITE CAP_SETUID CAP_SETGID \
 CAP_SYS_RESOURCE CAP_SYSLOG
 
-# `PrivateNetwork=true` breaks GUI notifications on oldstable distros \
-(Debian 8, CentOS 7, Linux Mint 18)
+# `PrivateNetwork=true` breaks GUI notifications on oldstable distros
+#   (Debian 8, CentOS 7, Linux Mint 18)
 # On modern distros you can set PrivateNetwork=true for security reasons
 #PrivateNetwork=true
 
