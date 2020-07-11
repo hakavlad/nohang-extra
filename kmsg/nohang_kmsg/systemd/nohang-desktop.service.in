@@ -5,7 +5,9 @@ Conflicts=nohang.service
 After=sysinit.target
 
 [Service]
-ExecStart=/usr/local/sbin/nohang --monitor --config /usr/local/etc/nohang/nohang-desktop.conf
+ExecStart=:TARGET_SBINDIR:/nohang --monitor \
+--config :TARGET_SYSCONFDIR:/nohang/nohang-desktop.conf
+
 SyslogIdentifier=nohang-desktop
 KillMode=mixed
 Restart=always
@@ -30,10 +32,8 @@ MemoryDenyWriteExecute=yes
 RestrictNamespaces=yes
 LockPersonality=yes
 PrivateTmp=true
-
 DeviceAllow=/dev/kmsg rw
 DevicePolicy=closed
-#DevicePolicy=strict
 
 # Capabilities whitelist:
 # CAP_KILL is required to send signals
@@ -41,14 +41,16 @@ DevicePolicy=closed
 # CAP_SYS_PTRACE is required to check /proc/[pid]/exe realpathes
 # CAP_DAC_READ_SEARCH is required to read /proc/[pid]/environ files
 # CAP_DAC_OVERRIDE fixes #94
-# CAP_DAC_READ_SEARCH CAP_AUDIT_WRITE CAP_SETUID CAP_SETGID CAP_SYS_RESOURCE are required to send GUI notifications
-# CAP_SYSLOG to check /dev/kmsg for OOM events
+# CAP_DAC_READ_SEARCH CAP_AUDIT_WRITE CAP_SETUID CAP_SETGID CAP_SYS_RESOURCE \
+are required to send GUI notifications
+# CAP_SYSLOG is required to check /dev/kmsg for OOM events
 
 CapabilityBoundingSet=CAP_KILL CAP_IPC_LOCK CAP_SYS_PTRACE \
 CAP_DAC_READ_SEARCH CAP_DAC_OVERRIDE CAP_AUDIT_WRITE CAP_SETUID CAP_SETGID \
 CAP_SYS_RESOURCE CAP_SYSLOG
 
-# `PrivateNetwork=true` breaks GUI notifications on oldstable distros (Debian 8, CentOS 7, Linux Mint 18)
+# `PrivateNetwork=true` breaks GUI notifications on oldstable distros \
+(Debian 8, CentOS 7, Linux Mint 18)
 # On modern distros you can set PrivateNetwork=true for security reasons
 #PrivateNetwork=true
 
