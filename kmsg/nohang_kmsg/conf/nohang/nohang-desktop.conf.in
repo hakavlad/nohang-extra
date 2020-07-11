@@ -22,6 +22,14 @@
 
 ###############################################################################
 
+    0. Check kernel messages for OOM events
+
+@check_kmsg
+
+@debug_kmsg
+
+###############################################################################
+
     1. Common zram settings
 
     Key: zram_checking_enabled
