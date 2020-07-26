@@ -1,0 +1,30 @@
+[Unit]
+Description=Daemon that prevents eviction of executables/libraries from memory
+Documentation=https://github.com/hakavlad/prelockd
+
+[Service]
+ExecStart=:TARGET_SBINDIR:/prelockd -c :TARGET_SYSCONFDIR:/prelockd/prelockd.conf
+TasksMax=1
+OOMScoreAdjust=-100
+LimitMEMLOCK=infinity
+LimitNOFILE=infinity
+CapabilityBoundingSet=CAP_IPC_LOCK CAP_SYS_PTRACE CAP_DAC_READ_SEARCH \
+CAP_DAC_OVERRIDE CAP_SYS_RESOURCE
+ProtectSystem=strict
+PrivateDevices=true
+PrivateNetwork=true
+ProtectHome=true
+RestrictRealtime=yes
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+PrivateTmp=true
+MemoryDenyWriteExecute=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+ProtectHostname=true
+ProtectClock=true
+ProtectKernelLogs=true
+
+[Install]
+WantedBy=multi-user.target
