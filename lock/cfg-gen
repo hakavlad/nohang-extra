@@ -1,0 +1,21 @@
+#!/usr/bin/env python3
+
+import os
+
+exe_set = set()
+
+for pid in os.listdir('/proc'):
+    if pid[0].isdecimal() is False:
+        continue
+
+    try:
+        rp = os.path.realpath('/proc/{}/exe'.format(pid))
+    except Exception as e:
+        pass
+    exe_set.add(rp)
+
+list_d = list(exe_set)
+list_d.sort()
+
+for rp in list_d:
+    print('+' + rp)
