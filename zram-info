@@ -1,0 +1,156 @@
+#!/usr/bin/env python3
+
+import os
+
+SC_PAGESIZE = os.sysconf(os.sysconf_names['SC_PAGESIZE'])
+
+MIB = 1024**2
+
+with open('/proc/meminfo') as f:
+    mem_total = int(f.read().partition(' kB\n')[0].split(' ')[-1]) * 1024
+
+
+def check_swap():
+    """
+    """
+    with open('/proc/swaps', 'rb') as f:
+        swaps_list = f.read().decode().split('\n')[1:][:-1]
+
+    swapd = dict()
+
+    for line in swaps_list:
+        line_list = line.split('\t')
+
+        swap_size = int(line_list[-3]) * 1024
+        swap_used = int(line_list[-2]) * 1024
+        dev = line_list[0]
+
+        if dev.startswith('/dev/zram'):
+            dev = dev.rpartition('partition')[0].rstrip()[5:]
+
+            swapd[dev] = (swap_size, swap_used)
+
+    return swapd
+
+
+def check_zram(swapd):
+    """
+    """
+    if os.path.exists('/sys/block/zram0/mm_stat'):
+
+        for dev in os.listdir('/sys/block'):
+
+            try:
+                with open('/sys/block/{}/mm_stat'.format(dev), 'rb') as f:
+                    f_list = f.read().decode().split()
+
+                with open('/sys/block/{}/disksize'.format(dev), 'rb') as f:
+                    disksize = int(f.read().decode().strip())
+
+                with open('/sys/block/{}/comp_algorithm'.format(
+                        dev), 'rb') as f:
+                    a = f.read().decode().rstrip()
+                    b = a.partition('[')[2]
+                    comp_algorithm = b.rpartition(']')[0]
+
+                with open('/sys/block/{}/max_comp_streams'.format(
+                        dev), 'rb') as f:
+                    max_comp_streams = f.read().decode().strip()
+
+            except FileNotFoundError:
+                continue
+
+            orig_data_size = int(f_list[0])  # bytes
+            compr_data_size = int(f_list[1])
+            mem_used_total = int(f_list[2])
+            mem_limit = int(f_list[3])
+            mem_used_max = int(f_list[4])
+
+            same_pages = int(f_list[5]) * SC_PAGESIZE
+            pages_compacted = int(f_list[6]) * SC_PAGESIZE
+
+            print(dev)
+            print('  disksize (DISKSIZE):        {}M, {}% (max uncompressed'
+                  ' data size)'.format(
+                      round(disksize / MIB, 1), round(
+                          disksize / mem_total * 100, 1)))
+            print('  comp_algorithm (ALGORITHM): {}'.format(comp_algorithm))
+            print('  max_comp_streams (STREAMS): {}'.format(max_comp_streams))
+
+            print('  mm_stat')
+            print('    orig_data_size   (DATA):  {}M, {}% (uncompressed data'
+                  ' without same_pages)'.format(
+                      round(orig_data_size / MIB, 1), round(
+                          orig_data_size / mem_total * 100, 1)))
+            print('    compr_data_size (COMPR):  {}M, {}% (compressed data'
+                  ' size)'.format(
+                      round(compr_data_size / MIB, 1), round(
+                          compr_data_size / mem_total * 100, 1)))
+            print('    mem_used_total  (TOTAL):  {}M, {}% (compressed data'
+                  ' with metadata)'.format(
+                      round(mem_used_total / MIB, 1), round(
+                          mem_used_total / mem_total * 100, 1)))
+            print('    mem_limit:                {}M, {}% (mem_used_total '
+                  'limit)'.format(
+                      round(mem_limit / MIB, 1), round(
+                          mem_limit / mem_total * 100, 1)))
+            print('    mem_used_max:             {}M, {}% (mem_used_total'
+                  ' peak)'.format(
+                      round(mem_used_max / MIB, 1), round(
+                          mem_used_max / mem_total * 100, 1)))
+            print('    same_pages:               {}M (no memory is allocat'
+                  'ed for such pages)'.format(
+                      round(same_pages / MIB, 1)))
+            print('    pages_compacted:          {}M (freed during compac'
+                  'tion)'.format(
+                      round(pages_compacted / MIB, 1)))
+            try:
+                huge_pages = int(f_list[7]) * SC_PAGESIZE
+                print('    huge_pages:               {}M (incompressible'
+                      ' pages)'.format(
+                          round(huge_pages / MIB, 1)))
+            except IndexError:
+                pass
+
+            if dev in swapd:
+                print('  Mounted as swap partition:  Yes')
+                is_swap = True
+                swap_size = swapd[dev][0]
+                swap_used = swapd[dev][1]
+                print('  Swap partition')
+                print('    size:            {}M'.format(round(
+                    swap_size / MIB, 1)))
+                print('    used:            {}M ({}%)'.format(
+                    round(swap_used / MIB, 1), round(
+                        swap_used / swap_size * 100, 1)))
+            else:
+                print('  Mounted as swap partition:  No')
+                is_swap = False
+
+            try:
+
+                x = orig_data_size / compr_data_size
+
+                print('  Compression ratio')
+                print('    DATA/COMPR:      {}'.format(round(
+                    x, 2)))
+                print('    DATA/TOTAL:      {}'.format(round(
+                    orig_data_size / mem_used_total, 2)))
+
+                if is_swap:
+                    print('    swap_used/COMPR: {}'.format(round(
+                        swap_used / compr_data_size, 2)))
+                    print('    swap_used/TOTAL: {}'.format(round(
+                        swap_used / mem_used_total, 2)))
+
+            except ZeroDivisionError:
+                pass
+
+    else:
+        print('zram devices are not exist')
+        exit()
+
+
+swapd = check_swap()
+
+check_zram(swapd)
