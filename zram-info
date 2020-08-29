@@ -14,12 +14,18 @@ def check_swap():
     """
     """
     with open('/proc/swaps', 'rb') as f:
-        swaps_list = f.read().decode().split('\n')[1:][:-1]
+        swaps_list = f.read().decode().split('\n')[1:][:-1]  #
 
     swapd = dict()
 
     for line in swaps_list:
         line_list = line.split('\t')
+
+        while True:
+            try:
+                line_list.remove('')
+            except ValueError:
+                break
 
         swap_size = int(line_list[-3]) * 1024
         swap_used = int(line_list[-2]) * 1024
@@ -128,12 +134,10 @@ def check_zram(swapd):
                 is_swap = False
 
             try:
-
-                x = orig_data_size / compr_data_size
-
+                cr = orig_data_size / compr_data_size
                 print('  Compression ratio')
                 print('    DATA/COMPR:      {}'.format(round(
-                    x, 2)))
+                    cr, 2)))
                 print('    DATA/TOTAL:      {}'.format(round(
                     orig_data_size / mem_used_total, 2)))
 
