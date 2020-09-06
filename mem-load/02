@@ -15,7 +15,7 @@ c = int(c)
 t = int(t)
 
 
-print('n0: ', n)
+print('n0: ', n0)
 print('c:  ', c)
 print('t:  ', t)
 
