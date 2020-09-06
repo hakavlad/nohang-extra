@@ -1,21 +1,17 @@
 #!/usr/bin/env python3
-"""A sophisticated low memory handler."""
-
-#import os
-#from ctypes import CDLL
-#from time import sleep, monotonic
-#from operator import itemgetter
-#from sys import stdout, stderr, argv, exit
-#from re import search
-#from sre_constants import error as invalid_re
-#from signal import signal, SIGKILL, SIGTERM, SIGINT, SIGQUIT, SIGHUP, SIGUSR1
 
 
 while True:
     pass
 
 
+"""
+Выше идет бесконечный цикл.
+Ниже интерпретиция идти не должна.
+"""
 
+
+###############################################################################
 
 
 
