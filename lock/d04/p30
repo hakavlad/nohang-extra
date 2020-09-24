@@ -1,0 +1,1341 @@
+#!/usr/bin/env python3
+"""prelockd"""
+
+import os
+import mmap
+from copy import deepcopy
+import pickle
+from re import search
+from sre_constants import error as invalid_re
+from time import sleep, monotonic, process_time
+from sys import stdout, stderr, exit, argv
+from signal import signal, SIGTERM, SIGINT, SIGQUIT, SIGHUP
+from ctypes import CDLL
+import json
+
+MIB = 1024**2
+
+max_total_size = 200 * MIB
+
+self_pid = str(os.getpid())
+
+
+
+
+
+#+
+def valid_re(reg_exp):
+    """
+    Validate regular expression.
+    """
+    try:
+        search(reg_exp, '')
+    except invalid_re:
+        errprint('Invalid config: invalid regexp: {}'.format(reg_exp))
+        exit(1)
+
+#+
+def errprint(*text):
+    """
+    """
+    print(*text, file=stderr, flush=True)
+
+#+
+def string_to_float_convert_test(string):
+    """
+    Try to interprete string values as floats.
+    """
+    try:
+        return float(string)
+    except ValueError:
+        return None
+
+#+
+def mlockall():
+    """
+    Lock process memory.
+    """
+    MCL_FUTURE = 2
+
+    libc = CDLL('libc.so.6', use_errno=True)
+
+    result = libc.mlockall(MCL_FUTURE)
+
+    if result != 0:
+        errprint('ERROR: cannot lock process memory: [Errno {}]'.format(
+            result))
+        errprint('Exit.')
+        exit(1)
+    else:
+        if debug:
+            print('process memory locked with MCL_FUTURE')
+
+
+def signal_handler(signum, frame):
+    """
+    Handle signals: close fd and exit.
+    """
+    print('Got signal {}'.format(signum))
+    mm_debug()
+    unlock_files(lock_dict)
+
+
+
+    lock_t = monotonic() - var_dict['lock_t0']
+
+    print('lock_t:', round(lock_t, 1))
+
+    write('/tmp/T', str(lock_t))
+
+
+
+
+
+    """
+
+
+
+    monitor_data = dict()
+    monitor_data['t'] = lock_t
+    monitor_data['snapshot_list'] = s_list
+
+    dump(monitor_data)
+    """
+
+    print('Exit.')
+
+    exit()
+
+
+
+
+
+def get_pid_list():
+    """
+    """
+    pid_list = []
+    for pid in os.listdir('/proc'):
+        if pid[0].isdecimal() is False:
+            continue
+        pid_list.append(pid)
+    pid_list.remove(self_pid)
+    return pid_list
+
+
+
+def get_current_set():
+    """
+    """
+    m0 = monotonic()
+    p0 = process_time()
+
+    if debug:
+        print('Looking for mapped files...')
+
+    new_map_set = set()
+
+    pid_list = get_pid_list()
+
+    for pid in pid_list:
+
+        p = '/proc/' + pid + '/maps'
+
+        try:
+
+
+            try:
+
+                with open(p, 'rb', buffering=0) as f:
+                    x = f.read().decode('utf-8', 'ignore').split('\n')
+
+            except PermissionError as e:
+                errprint(e)
+                exit(1)
+
+            for line in x:
+                a = line.partition('/')[2]
+                new_map_set.add(a)
+
+
+
+        except FileNotFoundError as e:
+            errprint(e)
+            continue
+
+    new_map_set.remove('')
+
+    final_map_set = set()
+
+    for i in new_map_set:
+        final_map_set.add('/' + i)
+
+
+
+    current_map_set = set()
+    for path in final_map_set:
+        if os.path.exists(path):
+            current_map_set.add(path)
+        else:
+            if debug:
+                print('skip:', path)
+
+    if debug:
+        list_d = list(current_map_set)
+        list_d.sort()
+        for path in list_d:
+            print('mapped:', path)
+
+    m1 = monotonic()
+    p1 = process_time()
+
+    if debug:
+        print('Found {} mapped files in {}s (process time: {}s)'.format(len(
+            current_map_set), round(m1 - m0, 3), round(p1 - p0, 3)))
+
+    return current_map_set
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def get_sorted(rp_set):
+    """
+    принимает список реалпасов
+    возв возрастающий сортированный список с размерами
+    проверяет существование, размер, соответствие регулярке
+    возвращает список кортежей
+    {rp} -> [(rp, size)]
+    """
+    di = dict()
+    for rp in rp_set:
+        rp = str(rp) # ?
+        if search(r, rp) is not None:
+            try:
+                s = os.path.getsize(rp)   # перв провер размера
+                if s > 0:
+                    di[rp] = s
+            except FileNotFoundError as e:
+                if debug:
+                    print(e)
+        else:
+            if debug:
+                print("skip (doesn't match $LOCK_RE): " + rp)
+    sorted_list = list(di.items())
+    sorted_list.sort(key=lambda i: i[1])
+    return sorted_list
+
+
+
+
+def get_sorted_locked():
+    """
+    принимать словарь, сортировать по азмеру
+    можно и не принимать - словарь в глобальном.
+    """
+    di = dict()
+    for rp in lock_dict:
+        size = lock_dict[rp][2]
+        di[rp] = size
+    sorted_list = list(di.items())
+    sorted_list.sort(key=lambda i: i[1], reverse=True)
+    return sorted_list
+
+
+
+
+
+
+
+
+def lock_files(rp_set):
+    """
+    """
+    if debug:
+        print('mapping (ang locking) files...')
+
+
+
+
+
+
+    mm_debug()
+
+
+    lock_counter = 0
+
+    sorted_list = get_sorted(rp_set)
+    # из сырого списка мапленных получаем готовый сортированный список для блокировки
+
+
+    locked_size0 = get_total_size()
+
+
+
+    sorted_locked = get_sorted_locked()
+
+    len_sorted_locked = len(sorted_locked)
+
+    last_index = 0
+    """
+    это должен быть список убыв размеров
+    по мере анлока можно двигаться от
+
+    следующ:
+    sorted_locked[0]/     sorted_locked[0][0] f, sorted_locked[0][1] size
+    f, s = sorted_locked[last_index]
+
+    """
+
+    for f_realpath, size in sorted_list:
+
+        #print('-' * 140)
+
+        #print('1. Вход в лок файла.')
+
+        mm_debug()
+
+
+        # skip large files
+        if size > max_file_size:
+            if debug:
+                print('skip (file size {}M > $MAX_FILE_SIZE_MIB) {}'.format(round( #########
+                    size / MIB, 1), f_realpath))
+                continue
+            else:
+                break
+
+
+
+
+
+        if f_realpath in lock_dict:
+            #print('----------#########------------------------ f_realpath in lock_dict:', f_realpath)
+            continue
+
+
+
+
+
+
+
+        #print('2. оверсайз файлы отсеяны.  Дальше важное - обработчик тотал сайз')
+
+        cap = max_total_size
+        locked = get_total_size()
+        cap_pc = round(locked / cap * 100, 1)
+        num = len(lock_dict)
+        avail = cap - locked
+
+        total_size = get_total_size()
+
+        avail = max_total_size - total_size
+
+
+        if avail < size:
+
+            #print('3.1. Попытка блок следующ приведет к тотал оверфлоу. Нужно попытаться вытеснить крупнейш лоченный файл, если он крупнее текущего')
+
+
+
+            if len_sorted_locked == 0:
+
+                #print('3.1.1. len_sorted_locked == 0, это первая блокировка и вытеснять нечего')
+                # тут можно скипать, это перваяблокировка и вытеснять нечего
+                if debug:
+                    print('skip (total_size ({}M) + size ({}M) > max_total_size) {}'.format(
+                        round(total_size / MIB, 1), round(size / MIB, 1), f_realpath))
+                    continue
+                else:
+                    break
+
+
+            else:
+
+                """
+                1/ есть что вытеснять
+
+
+                нужно найти: сколько станет доступн если анлокнуть крупнейший и токнуть текущий.
+
+
+                """
+
+
+                #print('КАКОГО ХУЯ', )
+
+                #print(sorted_locked)
+
+                #print('3.1.2. Попробуем вытесн')
+
+                #print('last index:', last_index) # следующ крупнейш файл для вытеснения. 0 и далее
+
+
+                old_f, old_s = sorted_locked[last_index]
+
+                #print('Жиробас:', old_f, old_s / MIB)
+
+
+
+                if size < old_s:
+                    #print('size < old_s: GOOD!', old_f, old_s)
+                    # тут можно анлокнуть этот файл. после анлока увеличим ласт индекс
+
+                    # го анмапить файл!
+
+
+                    #print('3.1.2.1. Текущ файл меньше крупнешего в списке.')
+                    #print('если доступн размер больше сайз, то нужно заблокир текущ файл')
+
+
+                    avail_future = avail + old_s - size ############################################################
+
+                    if avail_future < size:
+                        #print('Хуёво! Даже анлок старого жиробаса не освободит достаточно доступной. Выходим из цикла блокировки.')
+                        if debug:
+                            print('skip (total_size ({}M) + size ({}M) > max_total_size) {}'.format(
+                                round(total_size / MIB, 1), round(size / MIB, 1), f_realpath))
+                            continue
+                        else:
+                            break
+
+
+                    #print('АНЛОК староко жиробаса освободит достаточно места для блока нов файла.')
+
+                    mm_debug()
+
+                    # тут анлок старого
+
+
+
+                    print('АНЛОЧИМ старого!')
+                    mm_debug()
+                    lock_dict[old_f][1].close()
+                    lock_dict[old_f][0].close()
+                    del lock_dict[old_f]
+                    print('АЛОКНУЛИ!!!!!!!!!!!1   получилось?')
+                    mm_debug()
+                    print('ТУТ ВЫШЕ ДОЛЖНА БЫТЬ УБЫЛЬ. ОК?')
+
+                    last_index += 1
+                    print('next last_index:', last_index)
+
+
+
+
+                    # тут лок нового
+
+
+
+                    try:
+                        # if debug:
+                        print('locking ({}M) {}'.format(round(size / MIB, 1), f_realpath))
+
+                        f = open(f_realpath, 'rb')
+
+                        mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
+
+                        mm_len = len(mm)
+
+                        if mm_len != size:
+                            print('W: mm_len != size:', f_realpath)
+
+                        lock_dict[f_realpath] = (f, mm, mm_len)
+
+                        lock_counter += 1
+
+
+
+                        print('ОООХХХХХХУУУУУУУУУУЕЕЕЕЕЕЕЕЕЕЕТТТТТТТТТТТЬЬЬЬЬЬЬ!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+                        print('заблочили новый, вытеснив старый')
+                        mm_debug()
+                        print('идем дальше')
+                        continue
+
+
+                    except OSError as e:
+                        # дескрипторов нет если
+                        errprint(e)
+                        break
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                else:
+                    print('size > old_s: Текущий файл жирнее старого жиробаса. Можно выходить из цикла.')
+
+
+                # это выполн при невозможности вытеснения старого
+                if debug:
+                    print('skip (total_size ({}M) + size ({}M) > max_total_size) {}'.format(
+                        round(total_size / MIB, 1), round(size / MIB, 1), f_realpath))
+                    continue
+                else:
+                    break
+
+        else:
+            pass
+
+            #print('3.2. Есть место для норм блокировки след файла.')
+
+        # далее самое интересное. Вот тут можно сложный обработчик сделать.
+
+
+        """
+        нужна новая логика - не просто блокируем предоставленный список, а оглядываясь на уже заблоченный
+        многие позиции нового дублируют старый - пропускаем их, исли заблочены ранее и есть в курент
+
+        когда анлочим старое? только если упираемся в тотал сайз - если не можем заблочить новый файл
+        ...
+
+
+
+        да выше же!
+
+        """
+
+
+
+
+
+
+        #print('4. непринужденно блокир следующ файл.')
+
+
+
+
+
+        try:
+
+            # непосредственно блокируем и собираем дебажную инфу
+
+
+
+
+            # прямо здесь должен быть обработчик
+            # фактически часто: доблокировать новые мелкие, когда лимиты уже заняты
+            """
+            поэтому сразу к делу:
+            уперлись в лимит - разблокируем конец очереди, точнее анлочим конец словаря lock_dict
+            сортируем словарь на основе мапленных размеров, то что есть, быстро.
+            и при невозможности втиснуть мелкий файл на блокировку разблокируем старый жирный,
+            если он крупнее текущего
+
+            необходимо проверить условие:
+            1. новый файл мельче крупнейшего уже мапленного
+            2. хз.
+
+
+            """
+
+
+
+
+
+
+
+            if debug:
+                print('locking ({}M) {}'.format(
+                    round(size / MIB, 1), f_realpath))
+
+            f = open(f_realpath, 'rb')
+
+            mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
+
+            mm_len = len(mm)
+
+            if mm_len != size:
+                print('W: mm_len != size:', f_realpath)
+
+            lock_dict[f_realpath] = (f, mm, mm_len)
+
+            lock_counter += 1
+
+            #print('5. заблочен! см стат')
+
+            mm_debug()
+
+
+
+
+
+
+        except OSError as e:
+            # дескрипторов нет если
+            errprint(e)
+            break
+
+
+    locked_size1 = get_total_size()
+    locked_size = locked_size1 - locked_size0
+    print('locked {}M files'.format(round(locked_size / MIB, 1)))
+
+    print()
+    print('#' * 140)
+    print()
+
+
+
+    # was locked: 100m. new unlocked 10m. new locked 20m. new total 110m.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def unlock_files(elements):
+    """
+    """
+    print('unlocking files...')
+
+    if len(elements) > 0:
+
+        del_set = set()
+
+        for f_realpath in elements:
+
+            try:
+                lock_dict[f_realpath][1].close()
+                lock_dict[f_realpath][0].close()
+
+                mm_len = lock_dict[f_realpath][2]
+                new_total = get_total_size() - mm_len
+
+                del_set.add(f_realpath)
+
+                if debug:
+                    print('unlocked:', f_realpath)
+            except KeyError:
+                if debug:
+                    print('key error:', f_realpath)
+
+        if len(del_set) > 0:
+
+            # print(del_set)
+
+            for i in del_set:
+                try:
+                    lock_dict.pop(i)
+                except KeyError:
+                    print('key error:', f_realpath)
+
+    mm_debug()
+
+
+
+
+def write_snapshot():
+    """
+    """
+    map_set = get_current_set()
+    map_list = sorted(list(map_set))
+    print('Saving mapped files...')
+    try:
+        with open(saved_path, 'w') as f:
+            for line in map_list:
+                f.write(line + '\n')
+    except FileNotFoundError:
+        os.mkdir(saved_dir)
+        os.chmod(saved_dir, mode=0o700)
+        with open(saved_path, 'w') as f:
+            for line in map_list:
+                f.write(line + '\n')
+    print('OK, mmapped files list has been saved in ' + saved_path)
+
+
+def get_saved_set():
+    """
+    """
+    if debug:
+        print('Looking for saved files...')
+
+    saved_set = set()
+
+    try:
+        with open(saved_path) as f:
+            for line in f:
+                saved_set.add(line[:-1])
+    except FileNotFoundError as e:
+        errprint(e)
+
+    new_saved_set = set()
+
+    for path in saved_set:
+        if os.path.exists(path):
+            new_saved_set.add(path)
+        else:
+            if debug:
+                print('skip:', path)
+    if debug:
+        list_d = list(new_saved_set)
+        list_d.sort()
+        for path in list_d:
+            print('saved:', path)
+        print('Found {} saved paths'.format(len(new_saved_set)))
+
+    return new_saved_set
+
+
+def get_self_rss():  #######################################################################
+    """
+    """
+    with open('/proc/self/statm') as f:
+        return int(f.readline().split(' ')[1]) * SC_PAGESIZE
+
+
+
+
+
+def load():
+    """
+    """
+    with open(dump_path, 'rb') as f:
+        return pickle.load(f)
+
+
+
+def dump(data):
+    """
+    """
+    with open(dump_path, 'wb') as f:
+        pickle.dump(data, f, protocol=3)
+
+
+
+
+
+
+
+
+
+
+path2 = '/tmp/999.pickle'
+
+def load2():
+    """
+    """
+    with open(path2, 'rb') as f:
+        return pickle.load(f)
+
+
+
+def dump2(data):
+    """
+    """
+    with open(path2, 'wb') as f:
+        pickle.dump(data, f, protocol=3)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def get_total_size():
+    """
+    """
+    ts = 0
+    for rp in lock_dict:
+        f, m, s = lock_dict[rp]
+        ts += s
+    return ts
+
+
+
+
+
+
+
+def mm_debug():
+    """
+    locked 5.0M /usr/bin/foo
+    locked 100.0M/500.0M, 222 files, available to lock: 400.0M
+
+    unlocked 5.0M /usr/bin/foo
+    locked 100.0M/500.0M, 222 files, available to lock: 400.0M
+    """
+
+
+    cap = max_total_size
+    locked = get_total_size()
+    cap_pc = round(locked / cap * 100, 1)
+    num = len(lock_dict)
+    avail = cap - locked
+
+    if not debug:
+        return None
+
+
+    print('                                        locked {}M/{}M ({}%), {} files, available to lock: {}M'.format(
+        round(locked / MIB, 1),
+        round(cap / MIB, 1),
+        cap_pc,
+        num,
+        round(avail / MIB, 1)
+        ))
+
+
+
+
+def lockf(f_realpath):
+    f = open(f_realpath, 'rb')
+    mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
+    size = len(mm)
+    lock_dict[f_realpath] = (f, mm, size)
+    return size
+
+def unlockf(f_realpath):
+    size = lock_dict[f_realpath][2]
+    lock_dict[f_realpath][1].close()
+    lock_dict[f_realpath][0].close()
+    del lock_dict[f_realpath]
+    return size
+
+
+
+
+
+
+
+def string_to_int_convert_test(string):
+    """Try to interpret string values as integers."""
+    try:
+        return int(string)
+    except ValueError:
+        return None
+
+
+
+
+###############################################################################
+
+MIB = 1024 * 1024
+
+min_mem_available = 20 * 1024
+
+saved_dir = '/var/lib/prelockd'
+saved_path = '/var/lib/prelockd/saved_snapshot'
+debug = True
+
+
+a = argv[1:]
+la = len(a)
+if la == 0:
+    errprint('invalid input: missing CLI options')
+    exit(1)
+elif la == 1:
+    if a[0] == '-p':
+        get_current_set()
+        exit()
+    elif a[0] == '-w':
+        write_snapshot()
+        exit()
+    else:
+        errprint('invalid input')
+        exit(1)
+elif la == 2:
+    if a[0] == '-c':
+        config = a[1]
+    else:
+        errprint('invalid input')
+        exit(1)
+else:
+    errprint('invalid input: too many options')
+    exit(1)
+
+
+with open('/proc/meminfo') as f:
+    mem_list = f.readlines()
+    mem_total = int(mem_list[0].split(':')[1][:-4])
+
+
+mem_list_names = []
+
+for s in mem_list:
+    mem_list_names.append(s.split(':')[0])
+try:
+    mem_available_index = mem_list_names.index('MemAvailable')
+except ValueError:
+    errprint('Your Linux kernel is too old, Linux 3.14+ required\nExit')
+
+SC_PAGESIZE = os.sysconf(os.sysconf_names['SC_PAGESIZE'])
+
+
+config_dict = dict()
+
+try:
+    with open(config) as f:
+        for line in f:
+            if line[0] == '$' and '=' in line:
+                key, _, value = line.partition('=')
+                key = key.rstrip()
+                value = value.strip()
+                if key in config_dict:
+                    errprint('config key {} duplication'.format(key))
+                    exit(1)
+                config_dict[key] = value
+except (PermissionError, UnicodeDecodeError, IsADirectoryError,
+        IndexError, FileNotFoundError) as e:
+    errprint('Invalid config: {}. Exit.'.format(e))
+    exit(1)
+
+
+if '$DEBUG' in config_dict:
+    debug = config_dict['$DEBUG']
+    if debug == 'True':
+        debug = True
+    elif debug == 'False':
+        debug = False
+    else:
+        errprint('invalid $DEBUG value')
+        exit(1)
+else:
+    errprint('missing $DEBUG key')
+    exit(1)
+
+
+if '$MAX_FILE_SIZE_MIB' in config_dict:
+    string = config_dict['$MAX_FILE_SIZE_MIB']
+    max_file_size_mib = string_to_float_convert_test(string)
+    if max_file_size_mib is None:
+        errprint('invalid $MAX_FILE_SIZE_MIB value')
+        exit(1)
+    max_file_size = int(max_file_size_mib * 1048576)
+else:
+    errprint('missing $MAX_FILE_SIZE_MIB key')
+    exit(1)
+
+
+if '$LOCK_RE' in config_dict:
+    lock_re = config_dict['$LOCK_RE']
+    valid_re(lock_re)
+else:
+    errprint('missing $LOCK_RE key')
+    exit(1)
+
+
+if '$MAX_TOTAL_SIZE_PERCENT' in config_dict:
+    string = config_dict['$MAX_TOTAL_SIZE_PERCENT']
+    max_total_size_percent = string_to_float_convert_test(string)
+    if max_total_size_percent is None:
+        errprint('invalid $MAX_TOTAL_SIZE_PERCENT value')
+        exit(1)
+    max_total_size_pc = int(mem_total * max_total_size_percent / 100) * 1024
+else:
+    errprint('missing $MAX_TOTAL_SIZE_PERCENT key')
+    exit(1)
+
+
+if '$MAX_TOTAL_SIZE_MIB' in config_dict:
+    string = config_dict['$MAX_TOTAL_SIZE_MIB']
+    max_total_size_mib = string_to_float_convert_test(string)
+    if max_total_size_mib is None:
+        errprint('invalid $MAX_TOTAL_SIZE_MIB value')
+        exit(1)
+    max_total_size_mib = int(max_total_size_mib * 1048576)
+else:
+    errprint('missing $MAX_TOTAL_SIZE_MIB key')
+    exit(1)
+
+
+if max_total_size_mib <= max_total_size_pc:
+    max_total_size = max_total_size_mib
+else:
+    max_total_size = max_total_size_pc
+
+
+
+
+
+
+
+
+"""
+# Monitoring settings
+$POLL_INTERVAL_SEC=3600
+$STORE_SNAPSHOTS_NUM=24
+$MIN_FREQ_PERCENT=75
+
+ЗАПИЛИ КЛЮЧИ КОНФИГА!!!!!!!!!!!!!!!!!!!!!11
+
+"""
+
+
+if '$POLL_INTERVAL_SEC' in config_dict:
+    string = config_dict['$POLL_INTERVAL_SEC']
+    interval = string_to_float_convert_test(string)
+    if interval is None:
+        errprint('invalid $POLL_INTERVAL_SEC value')
+        exit(1)
+else:
+    errprint('missing $POLL_INTERVAL_SEC key')
+    exit(1)
+
+
+if '$MIN_FREQ_PERCENT' in config_dict:
+    string = config_dict['$MIN_FREQ_PERCENT']
+    min_freq = string_to_float_convert_test(string)
+    if min_freq is None:
+        errprint('invalid $MIN_FREQ_PERCENT value')
+        exit(1)
+    min_freq = min_freq / 100
+else:
+    errprint('missing $MIN_FREQ_PERCENT key')
+    exit(1)
+
+
+
+if '$STORE_SNAPSHOTS_NUM' in config_dict:
+    string = config_dict['$STORE_SNAPSHOTS_NUM']
+    store_num = string_to_int_convert_test(string)
+    if store_num is None:
+        errprint('invalid $STORE_SNAPSHOTS_NUM value')
+        exit(1)
+else:
+    errprint('missing $STORE_SNAPSHOTS_NUM key')
+    exit(1)
+
+
+
+
+
+
+
+
+
+
+
+#######################################################
+
+
+
+
+config = os.path.abspath(config)
+
+print('Starting prelockd with the config: {}'.format(config))
+
+if debug:
+    print('$MAX_FILE_SIZE_MIB:   ', max_file_size / MIB)
+    print('$MAX_TOTAL_SIZE_PERCENT:', round(max_total_size_pc / MIB, 1), '(MiB)')
+    print('$MAX_TOTAL_SIZE_MIB:    ', round(max_total_size_mib / MIB, 1))
+    print('max_total_size:         ', round(max_total_size / MIB, 1), '(MiB)')
+    print('$DEBUG:               ', debug)
+    print('$LOCK_RE:             ', lock_re)
+
+mlockall()
+
+r = lock_re
+
+
+
+
+###############################################################################
+
+
+
+p0 = process_time()
+m0 = monotonic()
+
+stdout.flush()
+
+sig_list = [SIGTERM, SIGINT, SIGQUIT, SIGHUP]
+
+lock_dict = dict()
+
+
+for i in sig_list:
+    signal(i, signal_handler)
+
+
+
+
+var_dict = dict()
+
+dump_path = '/var/lib/prelockd/dump.pickle'
+
+
+if store_num < 1:
+    print('invalid store_num')
+    exit(1)
+
+
+var_dict['lock_t0'] = monotonic()
+
+
+"""
+try:
+    print('RESTORE MONITOR DATA...')
+
+    monitor_data = load()
+    t = monitor_data['t']
+    s_list = monitor_data['snapshot_list']
+
+    for s in s_list:
+        final_set.update(s)
+
+    print('RESTORED', len(final_set))
+
+    print('LOCKING RESTORED...')
+
+    lock_files(final_set)
+
+
+    lock_t0 = monotonic() - t
+    var_dict['lock_t0'] = lock_t0
+
+
+    extra_t = interval - t
+    if extra_t > 0:
+        print('Sleep', extra_t)
+        sleep(extra_t)
+
+except Exception as e:
+    print(e)
+"""
+
+
+d = dict()
+
+
+start_list = []
+for _ in range(store_num - 1):
+    start_list.append(False)
+start_list.append(True)
+
+
+
+
+def write(path, string):
+    """
+    """
+    with open(path, 'w') as f:
+        f.write(string)
+
+
+
+def read(path):
+    """
+    """
+    with open(path, 'r') as f:
+        return f.read()
+
+
+
+dump_path = '/var/lib/data.json'
+
+def jdump(path, data):
+    """
+    """
+    with open(path, 'w') as f:
+        json.dump(data, f, sort_keys=True, indent=0)
+
+
+def jload(path):
+    """
+    """
+    with open(path) as f:
+        return json.load(f)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+try:
+    d = jload('/tmp/1.json')
+    print(d)
+except Exception as e:
+    print(e)
+    d = dict()
+
+
+xt = float(read('/tmp/T'))
+
+
+
+
+
+var_dict['lock_t0'] = monotonic()
+
+try:
+    print('RESTORE MONITOR DATA...')
+
+    monitor_data = load()
+    t = monitor_data['t']
+    s_list = monitor_data['snapshot_list']
+
+    for s in s_list:
+        final_set.update(s)
+
+    print('RESTORED', len(final_set))
+
+    print('LOCKING RESTORED...')
+
+    lock_files(final_set)
+
+
+    lock_t0 = monotonic() - t
+    var_dict['lock_t0'] = lock_t0
+
+
+    extra_t = interval - t
+    if extra_t > 0:
+        print('Sleep', extra_t)
+        sleep(extra_t)
+
+except Exception as e:
+    print(e)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+while True:
+
+    print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>.>>>>>>>>>>')
+
+
+
+    pt0 = process_time()
+
+
+
+
+
+
+    current_set = get_current_set()
+    d_set = set(d)
+    minus = d_set - current_set
+
+    for rp in current_set:
+        if rp in d:
+            v_list = d[rp]
+            v_list.append(True)
+            del v_list[0]
+            d[rp] = v_list
+        else:
+            d[rp] = deepcopy(start_list)
+
+    for rp in minus:
+        v_list = d[rp]
+        v_list.append(False)
+        del v_list[0]
+        if True in v_list:
+            d[rp] = v_list
+        else:
+            del d[rp]
+
+    final_set = set()
+
+    for rp in d:
+        n = d[rp].count(True)
+        freq = n / store_num
+        if freq >= min_freq:
+            final_set.add(rp)
+
+    old_final_set = set(lock_dict)
+    unlock_it = old_final_set - final_set
+    unlock_files(unlock_it)
+    lock_it = final_set - old_final_set
+    lock_files(lock_it)
+
+    var_dict['lock_t0'] = monotonic()
+
+    print()
+    """
+    for key in d:
+        value = d[key]
+        print(value, key)
+    """
+    print()
+
+
+    pt1 = process_time()
+    print(pt1 - pt0)
+
+    write('/tmp/data.json', json.dumps(d, sort_keys=True, indent=0))
+
+    jdump('/tmp/1.json', d)
+
+
+    # write('/tmp/data.json', json.dumps(d, sort_keys=True, indent=2))
+
+
+    print('sleep', interval)
+    sleep(interval)
+
+
