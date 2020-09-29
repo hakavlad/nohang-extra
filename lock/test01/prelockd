@@ -101,8 +101,23 @@ def get_current_set():
         if pid[0].isdecimal() is False:
             continue
 
-        if not (name == 'Xorg' or name == 'marco'):
+        name = pid_to_name(pid)
+
+
+        if not (name == 'Xorg' or name == 'marco' or name == 'openbox' or name == 'Xwayland' or name == 'gnome-shell' or name == 'xfwm4' or name == 'kwin_x11' or name == 'cinnamon' or name == 'compiz'):
             continue
+
+
+
+
+
+
+
+
+
+
+
+
 
         print(pid, name)
 
