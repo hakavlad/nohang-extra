@@ -1,0 +1,649 @@
+#!/usr/bin/env python3
+"""
+sort processes by oom_score
+"""
+
+
+from operator import itemgetter
+from argparse import ArgumentParser
+import os
+
+
+
+def find_cgroup_indexes():
+    """ Find cgroup-line positions in /proc/*/cgroup file.
+    """
+    cgroup_v1_index = cgroup_v2_index = None
+
+    with open('/proc/self/cgroup') as f:
+        for index, line in enumerate(f):
+            if ':name=' in line:
+                cgroup_v1_index = index
+            if line.startswith('0::'):
+                cgroup_v2_index = index
+
+    return cgroup_v1_index, cgroup_v2_index
+
+
+cgroup_v1_index, cgroup_v2_index = find_cgroup_indexes()
+
+
+
+def pid_to_cgroup_v1(pid):
+    """
+    """
+    cgroup_v1 = ''
+    with open('/proc/' + pid + '/cgroup') as f:
+        for index, line in enumerate(f):
+            if index == cgroup_v1_index:
+                cgroup_v1 = '/' + line.partition('/')[2][:-1]
+    return cgroup_v1
+
+
+
+def pid_to_cgroup_v2(pid):
+    """
+    """
+    cgroup_v2 = ''
+    with open('/proc/' + pid + '/cgroup') as f:
+        for index, line in enumerate(f):
+            if index == cgroup_v2_index:
+                cgroup_v2 = line[3:-1]
+    return cgroup_v2
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def rline1(path):
+    """Read 1st line from the path."""
+    try:
+        with open(path) as f:
+            for line in f:
+                return line.rstrip()
+    except UnicodeDecodeError:
+        with open(path, 'rb') as f:
+            return f.read(999).decode(
+                'utf-8', 'ignore').split('\n')[0]  # use partition()!
+
+SC_CLK_TCK = os.sysconf(os.sysconf_names['SC_CLK_TCK'])
+
+
+def format_time(t):
+    """
+    """
+    t = int(t)
+
+    if t < 60:
+        return '{}s'.format(t)
+
+    if t > 3600:
+        h = t // 3600
+        s0 = t - h * 3600
+        m = s0 // 60
+        s = s0 % 60
+        return '{}h {}min {}s'.format(h, m, s)
+
+    m = t // 60
+    s = t % 60
+    return '{}min {}s'.format(m, s)
+
+
+def uptime():
+    """
+    """
+    return float(rline1('/proc/uptime').split(' ')[0])
+
+
+def pid_to_starttime(pid):
+    """
+    """
+    with open('/proc/' + pid + '/stat', 'rb') as f:
+        starttime = f.read().decode('utf-8', 'ignore').rpartition(')')[2].split(' ')[20]
+    return float(starttime) / SC_CLK_TCK
+
+
+
+def pid_to_lifetime(pid):
+    """
+    """
+
+
+    lifetime = format_time(uptime() - pid_to_starttime(pid))
+
+
+# сорт по старттайму. ! аптайм получ на выходе единожды
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def pid_to_oom_score(pid):
+    with open('/proc/{}/oom_score'.format(pid), 'rb', buffering=0) as f:
+        return int(f.read())
+
+
+def pid_to_oom_score_adj(pid):
+    with open('/proc/{}/oom_score_adj'.format(pid), 'rb', buffering=0) as f:
+        return int(f.read())
+
+
+def pid_to_cmdline(pid):
+    with open('/proc/{}/cmdline'.format(pid), 'rb', buffering=0) as f:
+        return f.read().decode('utf-8', 'ignore').replace(
+            '\x00', ' ').strip()
+
+
+
+def pid_to_environ(pid):
+    with open('/proc/{}/environ'.format(pid), 'rb', buffering=0) as f:
+        return f.read().decode('utf-8', 'ignore').replace(
+            '\x00', ' ').strip()
+
+
+
+
+
+
+
+
+
+
+
+def pid_to_exe_realpath(pid):
+    """
+    """
+    try:
+        exe_realpath = os.path.realpath('/proc/{}/exe'.format(pid))
+    except Exception as e:
+        exe_realpath = str(e)
+    return exe_realpath
+
+
+def pid_to_cwd_realpath(pid):
+    """
+    """
+    try:
+        cwd_realpath = os.path.realpath('/proc/{}/cwd'.format(pid))
+    except Exception as e:
+        cwd_realpath = str(e)
+    return cwd_realpath
+
+
+
+
+
+
+
+
+
+
+
+
+def pid_to_status_units(pid):
+    with open('/proc/{}/status'.format(pid), 'rb', buffering=0) as f:
+        f_list = f.read().decode('utf-8', 'ignore').split('\n')
+        for i in range(len(f_list)):
+            if i == 1:
+                name = f_list[0].split('\t')[1]
+            if i == uid_index:
+                uid = f_list[i].split('\t')[2]
+            if i == vm_rss_index:
+                vm_rss = f_list[i].split('\t')[1][:-3]
+            if i == vm_swap_index:
+                vm_swap = f_list[i].split('\t')[1][:-3]
+    return name, uid, vm_rss, vm_swap
+
+
+def get_max_pid_len():
+    with open('/proc/sys/kernel/pid_max') as f:
+        for line in f:
+            return len(line.strip())
+
+
+
+
+
+
+
+sort_dict = {
+    'oom_score': 0,
+    'oom_score_adj': 1,
+    'UID': 2,
+    'PID': 3,
+    'Name': 4,
+    'VmRSS': 5,
+    'VmSwap': 6,
+    'extra': 7
+}
+
+
+
+
+parser = ArgumentParser()
+
+parser.add_argument(
+    '--num',
+    '-n',
+    help="""max number of lines; default value: 99999""",
+    default=99999,
+    type=str
+)
+
+
+parser.add_argument(
+    '--extra',
+    '-e',
+    help='extra field; default value: None; valid values: cmdline, environ, ' \
+         'exe_realpath, cwd_realpath, cgroup_v1, cgroup_v2, lifetime)',
+    default='None',
+    type=str
+)
+
+parser.add_argument(
+    '--len',
+    '-l',
+    help='max extra field length; default value: 99999',
+    default=99999,
+    type=int
+)
+
+parser.add_argument(
+    '--sort',
+    '-s',
+    help='sort by unit; default value: oom_score; valid values: oom_score, o' \
+         'om_score_adj, UID, PID, Name, VmRSS, VmSwap, extra',
+    default='oom_score',
+    type=str
+)
+
+
+
+args = parser.parse_args()
+
+display_extra = args.len
+
+num_lines = args.num
+
+sort_by = args.sort
+
+extra = args.extra
+
+
+
+if extra == 'None':
+    extra = None
+
+
+
+
+
+if sort_by not in sort_dict:
+    print('Invalid -s/--sort value. Valid values are:\nPID, oom_score [defau' \
+          'lt value], oom-sore_adj, UID, Name, VmRSS, VmSwap, extra')
+    exit()
+
+
+
+
+
+if not (extra is None or extra == 'cmdline' or extra == 'environ' or \
+        extra == 'exe_realpath' or extra == 'cwd_realpath' or \
+        extra == 'cgroup_v1' or extra == 'cgroup_v2' or extra == 'lifetime'):
+
+    print('Invalid -e/--extra value. Valid values are:\nNone [default value]' \
+          ', cmdline, environ, exe_realpath, cwd_realpath,\ncgroup_v1, cgrou' \
+          'p_v2, lifetime')
+
+    exit()
+
+
+
+
+
+
+def is_alive(pid):
+    """
+    """
+    try:
+        with open('/proc/{}/statm'.format(pid), 'rb', buffering=0) as f:
+            rss = f.read().decode().split(' ')[1]
+            if rss != '0':
+                return True
+    except FileNotFoundError:
+        return False
+    except ProcessLookupError:
+        return False
+    except NotADirectoryError:
+        return False
+    except PermissionError:
+        return False
+
+def alive_pid_list():
+    """
+    """
+    pid_list = []
+    for pid in os.listdir('/proc'):
+
+        if pid[0].isdecimal() is False:
+            continue
+
+        if is_alive(pid):
+            pid_list.append(pid)
+
+    # pid_list.remove(self_pid)
+
+    if '1' in pid_list:
+        pid_list.remove('1')
+
+    return pid_list
+
+
+
+
+
+
+
+
+
+
+
+# find VmRSS, VmSwap and UID positions in /proc/*/status for further
+# searching positions of UID, VmRSS and VmSwap in each process
+
+with open('/proc/self/status') as file:
+    status_list = file.readlines()
+
+status_names = []
+for s in status_list:
+    status_names.append(s.split(':')[0])
+
+uid_index = status_names.index('Uid')
+vm_rss_index = status_names.index('VmRSS')
+vm_swap_index = status_names.index('VmSwap')
+
+
+# get sorted list with pid, oom_score, oom_score_adj, cmdline
+# get status units: name, uid, rss, swap
+
+
+oom_list = []
+
+for pid in alive_pid_list():
+
+    try:
+
+        oom_score = pid_to_oom_score(pid)
+
+        oom_score_adj = pid_to_oom_score_adj(pid)
+
+        name, uid, vm_rss, vm_swap = pid_to_status_units(pid)
+
+        if extra is None:
+            ex = ''
+
+        if extra == 'cmdline':
+            ex = pid_to_cmdline(pid)
+
+        if extra == 'environ':
+            ex = pid_to_environ(pid)
+
+        if extra == 'exe_realpath':
+            ex = pid_to_exe_realpath(pid)
+
+        if extra == 'cwd_realpath':
+            ex = pid_to_cwd_realpath(pid)
+
+
+        if extra == 'cgroup_v1':
+            ex = pid_to_cgroup_v1(pid)
+
+        if extra == 'cgroup_v2':
+            ex = pid_to_cgroup_v2(pid)
+
+        if extra == 'lifetime':
+            ex = pid_to_starttime(pid)
+
+
+
+
+
+
+
+    except (FileNotFoundError, ProcessLookupError):
+        continue
+
+    except Exception as e:
+        print(e)
+        exit(1)
+
+    oom_list.append((
+        int(oom_score),
+        int(oom_score_adj),
+        int(uid),
+        int(pid),
+        name,
+        int(vm_rss),
+        int(vm_swap),
+        ex
+        ))
+
+oom_list_sorted = sorted(oom_list, key=itemgetter(int(sort_dict[sort_by])), reverse=True)
+
+max_pid_len = get_max_pid_len()
+
+max_uid_len = len(str(sorted(
+    oom_list, key=itemgetter(2), reverse=True)[0][5]))
+
+
+max_vm_rss_len = len(str(round(
+    sorted(oom_list, key=itemgetter(5), reverse=True)[0][6] / 1024)))
+
+if max_vm_rss_len < 5:
+    max_vm_rss_len = 5
+
+
+
+
+
+# HEAD
+if display_extra == 0 or extra is None:
+    print(
+        'oom_score oom_score_adj{}UID{}PID Name       {}VmRSS   VmSwap'.format(
+            ' ' * (max_uid_len - 2),
+            ' ' * (max_pid_len - 2),
+            ' ' * max_vm_rss_len
+        ))
+    print(
+        '--------- ------------- {} {} --------------- {}-- --------'.format(
+            '-' * max_uid_len,
+            '-' * max_pid_len,
+            '-' * max_vm_rss_len
+        ))
+else:
+    print(
+        'oom_score oom_score_adj{}UID{}PID Name       {}VmRSS   VmSwa'
+        'p   {}'.format(
+            ' ' * (max_uid_len - 2),
+            ' ' * (max_pid_len - 2),
+            ' ' * max_vm_rss_len,
+            extra
+        ))
+    print(
+        '--------- ------------- {} {} --------------- {}-- ------'
+        '-- {}'.format(
+            '-' * max_uid_len,
+            '-' * max_pid_len,
+            '-' * max_vm_rss_len,
+            '-' * len(extra)
+        ))
+
+
+
+
+
+
+# print processes stats sorted by sort_dict[sort_by]
+
+
+"""
+    oom_list.append((
+        int(oom_score), 0
+        int(oom_score_adj), 1
+        int(uid), 2
+        int(pid), 3
+        name, 4
+        int(vm_rss), 5
+        int(vm_swap), 6
+        extra 7
+        ))
+
+oom-sort -e cmdlime
+oom-sort -e environ
+oom-sort -e exe_realpath
+oom-sort -e cwd_realpath
+oom-sort -e cgroup_v1
+oom-sort -e cgroup_v2
+
+
+./x05 -s extra
+строго говоря это должно быть инваоидно
+ибо неопределенная сортировка
+при сортировке экстра должно быть непустое поле экстра. то есть не НОНЕ
+
+
+перепроверить аутпуы, хелпы,
+исправить ман, перегенерировать.
+
+поспеши сделать окончательн пуш
+
+
+"""
+
+
+
+if extra == 'lifetime':
+    up = uptime()
+
+
+
+
+for i in oom_list_sorted[:int(num_lines)]:
+
+    oom_score = i[0]
+    oom_score_adj = i[1]
+    uid = i[2]
+    pid = i[3]
+    name = i[4]
+    vm_rss = i[5]
+    vm_swap = i[6]
+    ex = i[7]
+
+    if extra == 'lifetime':
+        ex = format_time(up - ex)
+
+    print('{} {} {} {} {} {} M {} M  {}'.format(
+        str(oom_score).rjust(9),
+        str(oom_score_adj).rjust(13),
+        str(uid).rjust(max_uid_len),
+        str(pid).rjust(max_pid_len),
+        name.ljust(15),
+        str(round(vm_rss / 1024.0)).rjust(max_vm_rss_len, ' '),
+        str(round(vm_swap / 1024.0)).rjust(6, ' '),
+        str(ex)[:display_extra]
+        ))
+
+
+
+
+
+"""
+
+./x05 -s extra
+строго говоря это должно быть инваоидно
+ибо неопределенная сортировка
+при сортировке экстра должно быть непустое поле экстра. то есть не НОНЕ
+
+
+
+
+
+
+
+процесс:
+- sid
+- в той же автогруппе
+
+Может ли в той же автогруппе родиться новый пид совпадающий с сид? да легко.
+вообще даже чекинг старттайма не панацея.
+пример:
+- все в пределах автогруппы
+- оригинальн сид умер
+- новый пид подсел на сид
+- все процы кроме сид умерли
+- новы сид пид нарожал потомков
+- в тоге имеем сид-самолзванец - самый старый в группе.
+Конечно, врочтность этого супер низкая.
+
+
+
+
+
+
+
+
+
+
+Прими решение: допилить oom-sort до конца.Допиливай код, тестир под хайдпид 1 и 2. Пуш!
+
+
+Пакетируй претокд и мемав.
+
+
+
+В МАНАХ НЕ ОТРАЖЕНЫ ПОДВОДНЫЕ. ПОЗОР.
+
+
+
+
+
+
+
+
+"""
+
+
+
+
+
+
+
+
