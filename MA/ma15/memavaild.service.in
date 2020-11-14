@@ -1,0 +1,32 @@
+[Unit]
+Description=Daemon that keeps amount of available memory
+Documentation=man:memavaild(8) https://github.com/hakavlad/memavaild
+Requires=system.slice user.slice
+
+[Service]
+ExecStart=:TARGET_SBINDIR:/memavaild -c :TARGET_SYSCONFDIR:/memavaild.conf
+Restart=on-failure
+User=memavaild
+Slice=hostcritical.slice
+AmbientCapabilities=CAP_IPC_LOCK CAP_DAC_OVERRIDE
+TasksMax=1
+MemoryMax=25M
+MemorySwapMax=1
+PrivateTmp=true
+ProtectHome=true
+ProtectClock=true
+ProtectSystem=strict
+ProtectHostname=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+MemoryDenyWriteExecute=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+PrivateDevices=true
+PrivateNetwork=true
+LockPersonality=yes
+NoNewPrivileges=yes
+RestrictSUIDSGID=yes
+
+[Install]
+WantedBy=multi-user.target
