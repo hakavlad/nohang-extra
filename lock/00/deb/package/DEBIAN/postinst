@@ -1,0 +1,2 @@
+useradd -r -s /bin/false prelockd || :
+systemctl daemon-reload
