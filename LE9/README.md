@@ -5,6 +5,25 @@
 
 -- https://bugs.launchpad.net/ubuntu/+source/linux/+bug/159356/comments/89
 
+> Tested on kernel 4.18.5 under Qubes OS, in both dom0 and VMs. It gets
+> rid of the disk thrashing that would otherwise seemingly-permanently
+> freeze a qube (VM) with continous disk reading (seen from dom0 via
+> sudo iotop). With the above, it only freezes for at most 1 second
+> before OOM-killer triggers and restores the RAM by killing some
+> process.
+
+> If anyone has a better idea, please let me know. I am hoping someone
+> knowledgeable can step in :)
+
+> I tried to find a way to also keep Inactive file pages in RAM, just
+> for tests(!) but couldn't figure out how (I'm not a programmer).
+> So, keeping just the Active file pages, seem good enough for now, even
+> though I can clearly see (via vm.block_dump=1) that there are still
+> some pages that are being re-read during high memory pressure, but
+> they for some reason don't cause any(or much) disk thrashing.
+
+-- https://lkml.org/lkml/2018/9/10/296
+
 ### Why don't you try sending it to linux-mm?
 
 multiple reasons
