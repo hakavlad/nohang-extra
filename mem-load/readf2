@@ -14,13 +14,13 @@ t0 = monotonic()
 
 """
 
-./readf -m 500000 -f /usr/lib/chromium/chromium
+./readf2 -m 200 -f /usr/lib/chromium/chromium
 
 -m
 -f
 
-os.path.isfile(path) 
-os.path.isdir(path) 
+os.path.isfile(path)
+os.path.isdir(path)
 
 """
 
@@ -75,31 +75,33 @@ b_num = int(mib_num * 1024 * 1024)
 m = 1
 
 
-for _ in range(m):
-    li = []
-    cur_sum = 0
+while True:
 
-    while True:
+    for _ in range(m):
+        li = []
+        cur_sum = 0
 
-
-        if cur_sum < b_num:
-            #sleep(0.003)
-            n = b_num - cur_sum
+        while True:
 
 
-            with open(f_path, 'rb') as f:
-                foo = f.read(n)
-                fl = len(foo)
-                cur_sum += fl
-                li.append(foo)
+            if cur_sum < b_num:
+                #sleep(0.003)
+                n = b_num - cur_sum
 
 
-            print(cur_sum)
+                with open(f_path, 'rb') as f:
+                    foo = f.read(n)
+                    fl = len(foo)
+                    cur_sum += fl
+                    li.append(foo)
 
-        else:
-            t1 = monotonic()
-            t = t1 - t0
-            print('OK, t:', round(t, 1))
-            break
-            #exit()
+
+                print(cur_sum)
+
+            else:
+                t1 = monotonic()
+                t = t1 - t0
+                print('OK, t:', round(t, 1))
+                break
+                #exit()
 
