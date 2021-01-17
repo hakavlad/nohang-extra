@@ -14,7 +14,7 @@ t0 = monotonic()
 
 """
 
-./readf -m 500000 -f /usr/lib/chromium/chromium
+./readf -m 12500 -f /usr/lib/chromium/chromium
 
 -m
 -f
