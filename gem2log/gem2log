@@ -1,0 +1,127 @@
+#!/usr/bin/env python3
+"""gem2log"""
+
+from argparse import ArgumentParser
+from ctypes import CDLL
+from signal import SIGHUP, SIGINT, SIGQUIT, SIGTERM, signal
+from sys import exit
+from time import sleep
+
+def log(msg):
+    """
+    """
+    print(msg)
+    if separate_log:
+        logging.info(msg)
+
+
+def mlockall():
+    """
+    """
+    MCL_CURRENT = 1
+    MCL_FUTURE = 2
+    MCL_ONFAULT = 4
+
+    libc = CDLL(None, use_errno=True)
+    result = libc.mlockall(MCL_CURRENT | MCL_FUTURE | MCL_ONFAULT)
+
+    if result != 0:
+        result = libc.mlockall(MCL_CURRENT | MCL_FUTURE)
+
+
+gem_path = '/sys/kernel/debug/dri/0/i915_gem_objects'
+MIB = 1024**2
+
+
+def check_gem():
+    """
+    """
+    with open(gem_path) as f:
+        x = f.readline()
+
+    a1, _, a2 = x.partition(', ')
+
+    b = int(a2.split(' ')[0])
+
+    c = '{}, {} MiB'.format(a1, round(b / MIB, 1))
+
+    return c
+
+
+
+
+
+
+def signal_handler(signum, frame):
+    """
+    """
+    def signal_handler_inner(signum, frame):
+        pass
+
+    for i in sig_list:
+        signal(i, signal_handler_inner)
+    print()
+    exit()
+
+
+try:
+    with open(gem_path) as f:
+        f.readline()
+except Exception as e:
+    print(e)
+    exit(1)
+
+
+mlockall()
+
+
+sig_list = [SIGTERM, SIGINT, SIGQUIT, SIGHUP]
+
+sig_dict = {
+    SIGINT: 'SIGINT',
+    SIGQUIT: 'SIGQUIT',
+    SIGHUP: 'SIGHUP',
+    SIGTERM: 'SIGTERM'
+}
+
+for i in sig_list:
+    signal(i, signal_handler)
+
+
+interval = 2
+
+while True:
+
+    print(check_gem())
+
+    sleep(interval)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
