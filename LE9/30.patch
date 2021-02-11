@@ -1,0 +1,198 @@
+diff -pru a/include/linux/mm.h b/include/linux/mm.h
+--- a/include/linux/mm.h	2021-01-17 22:17:06.000000000 +0900
++++ b/include/linux/mm.h	2021-02-12 04:41:34.059172084 +0900
+@@ -205,6 +205,13 @@ extern int sysctl_max_map_count;
+ extern unsigned long sysctl_user_reserve_kbytes;
+ extern unsigned long sysctl_admin_reserve_kbytes;
+ 
++#if defined(CONFIG_PROTECT_FILE)
++extern unsigned long sysctl_file_low_kbytes;
++extern unsigned long sysctl_file_min_kbytes;
++extern unsigned long sysctl_file_node_low_kbytes;
++extern unsigned long sysctl_file_node_min_kbytes;
++#endif
++
+ extern int sysctl_overcommit_memory;
+ extern int sysctl_overcommit_ratio;
+ extern unsigned long sysctl_overcommit_kbytes;
+diff -pru a/kernel/sysctl.c b/kernel/sysctl.c
+--- a/kernel/sysctl.c	2021-01-17 22:17:06.000000000 +0900
++++ b/kernel/sysctl.c	2021-02-12 04:41:34.059172084 +0900
+@@ -111,6 +111,29 @@
+ static int sixty = 60;
+ #endif
+ 
++#if defined(CONFIG_PROTECT_FILE)
++#if CONFIG_PROTECT_FILE_NODE_LOW_KBYTES < 0
++#error "CONFIG_PROTECT_FILE_NODE_LOW_KBYTES should be >= 0"
++#endif
++#if CONFIG_PROTECT_FILE_NODE_MIN_KBYTES < 0
++#error "CONFIG_PROTECT_FILE_NODE_MIN_KBYTES should be >= 0"
++#endif
++unsigned long sysctl_file_node_low_kbytes __read_mostly =
++	CONFIG_PROTECT_FILE_NODE_LOW_KBYTES;
++unsigned long sysctl_file_node_min_kbytes __read_mostly =
++	CONFIG_PROTECT_FILE_NODE_MIN_KBYTES;
++#if CONFIG_PROTECT_FILE_LOW_KBYTES < 0
++#error "CONFIG_PROTECT_FILE_LOW_KBYTES should be >= 0"
++#endif
++#if CONFIG_PROTECT_FILE_MIN_KBYTES < 0
++#error "CONFIG_PROTECT_FILE_MIN_KBYTES should be >= 0"
++#endif
++unsigned long sysctl_file_low_kbytes __read_mostly =
++	CONFIG_PROTECT_FILE_LOW_KBYTES;
++unsigned long sysctl_file_min_kbytes __read_mostly =
++	CONFIG_PROTECT_FILE_MIN_KBYTES;
++#endif
++
+ static int __maybe_unused neg_one = -1;
+ static int __maybe_unused two = 2;
+ static int __maybe_unused four = 4;
+@@ -3082,6 +3105,36 @@ static struct ctl_table vm_table[] = {
+ 		.extra2		= SYSCTL_ONE,
+ 	},
+ #endif
++#if defined(CONFIG_PROTECT_FILE)
++	{
++		.procname	= "file_node_low_kbytes",
++		.data		= &sysctl_file_node_low_kbytes,
++		.maxlen		= sizeof(sysctl_file_node_low_kbytes),
++		.mode		= 0644,
++		.proc_handler	= proc_doulongvec_minmax,
++	},
++	{
++		.procname	= "file_node_min_kbytes",
++		.data		= &sysctl_file_node_min_kbytes,
++		.maxlen		= sizeof(sysctl_file_node_min_kbytes),
++		.mode		= 0644,
++		.proc_handler	= proc_doulongvec_minmax,
++	},
++	{
++		.procname	= "file_low_kbytes",
++		.data		= &sysctl_file_low_kbytes,
++		.maxlen		= sizeof(sysctl_file_low_kbytes),
++		.mode		= 0644,
++		.proc_handler	= proc_doulongvec_minmax,
++	},
++	{
++		.procname	= "file_min_kbytes",
++		.data		= &sysctl_file_min_kbytes,
++		.maxlen		= sizeof(sysctl_file_min_kbytes),
++		.mode		= 0644,
++		.proc_handler	= proc_doulongvec_minmax,
++	},
++#endif
+ 	{
+ 		.procname	= "user_reserve_kbytes",
+ 		.data		= &sysctl_user_reserve_kbytes,
+diff -pru a/mm/Kconfig b/mm/Kconfig
+--- a/mm/Kconfig	2021-01-17 22:17:06.000000000 +0900
++++ b/mm/Kconfig	2021-02-12 04:41:34.059172084 +0900
+@@ -63,6 +63,30 @@ config SPARSEMEM_MANUAL
+ 
+ endchoice
+ 
++config PROTECT_FILE
++	def_bool y
++	depends on SYSCTL
++
++config PROTECT_FILE_LOW_KBYTES
++	int "Default value for vm.file_low_kbytes"
++	depends on PROTECT_FILE
++	default "0"
++
++config PROTECT_FILE_MIN_KBYTES
++	int "Default value for vm.file_min_kbytes"
++	depends on PROTECT_FILE
++	default "0"
++
++config PROTECT_FILE_NODE_LOW_KBYTES
++	int "Default value for vm.file_node_low_kbytes"
++	depends on PROTECT_FILE
++	default "0"
++
++config PROTECT_FILE_NODE_MIN_KBYTES
++	int "Default value for vm.file_node_min_kbytes"
++	depends on PROTECT_FILE
++	default "0"
++
+ config DISCONTIGMEM
+ 	def_bool y
+ 	depends on (!SELECT_MEMORY_MODEL && ARCH_DISCONTIGMEM_ENABLE) || DISCONTIGMEM_MANUAL
+diff -pru a/mm/vmscan.c b/mm/vmscan.c
+--- a/mm/vmscan.c	2021-01-17 22:17:06.000000000 +0900
++++ b/mm/vmscan.c	2021-02-12 04:52:16.996009906 +0900
+@@ -120,6 +120,13 @@ struct scan_control {
+ 	/* The file pages on the current node are dangerously low */
+ 	unsigned int file_is_tiny:1;
+ 
++#if defined(CONFIG_PROTECT_FILE)
++	unsigned int file_is_low:1;
++	unsigned int file_is_min:1;
++	unsigned int file_global_is_low:1;
++	unsigned int file_global_is_min:1;
++#endif
++
+ 	/* Allocation order */
+ 	s8 order;
+ 
+@@ -2270,6 +2277,14 @@ static void get_scan_count(struct lruvec
+ 		goto out;
+ 	}
+ 
++#if defined(CONFIG_PROTECT_FILE)
++	if (sc->file_is_low || sc->file_is_min ||
++		sc->file_global_is_low || sc->file_global_is_min) {
++		scan_balance = SCAN_ANON;
++		goto out;
++	}
++#endif
++
+ 	/*
+ 	 * If the system is almost out of file pages, force-scan anon.
+ 	 */
+@@ -2414,6 +2429,11 @@ out:
+ 			BUG();
+ 		}
+ 
++#if defined(CONFIG_PROTECT_FILE)
++		if (file && (sc->file_is_min || sc->file_global_is_min))
++			scan = 0;
++#endif
++
+ 		nr[lru] = scan;
+ 	}
+ }
+@@ -2668,6 +2688,10 @@ static void shrink_node(pg_data_t *pgdat
+ 	bool reclaimable = false;
+ 	unsigned long file;
+ 
++#if defined(CONFIG_PROTECT_FILE)
++	unsigned long file_global;
++#endif
++
+ 	target_lruvec = mem_cgroup_lruvec(sc->target_mem_cgroup, pgdat);
+ 
+ again:
+@@ -2758,6 +2782,21 @@ again:
+ 		 */
+ 		anon = node_page_state(pgdat, NR_INACTIVE_ANON);
+ 
++#if defined(CONFIG_PROTECT_FILE)
++		file_global = global_node_page_state(NR_ACTIVE_FILE) +
++			   global_node_page_state(NR_INACTIVE_FILE);
++
++		sc->file_global_is_min =
++			file_global <= sysctl_file_min_kbytes >> (PAGE_SHIFT - 10);
++		sc->file_global_is_low =
++			file_global <= sysctl_file_low_kbytes >> (PAGE_SHIFT - 10);
++
++		sc->file_is_min =
++			file <= sysctl_file_node_min_kbytes >> (PAGE_SHIFT - 10);
++		sc->file_is_low =
++			file <= sysctl_file_node_low_kbytes >> (PAGE_SHIFT - 10);
++#endif
++
+ 		sc->file_is_tiny =
+ 			file + free <= total_high_wmark &&
+ 			!(sc->may_deactivate & DEACTIVATE_ANON) &&
