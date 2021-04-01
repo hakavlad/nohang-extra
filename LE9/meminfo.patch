@@ -1,0 +1,11 @@
+diff -pru a/fs/proc/meminfo.c b/fs/proc/meminfo.c
+--- a/fs/proc/meminfo.c	2020-12-30 19:54:29.000000000 +0900
++++ b/fs/proc/meminfo.c	2021-04-01 19:32:08.863398550 +0900
+@@ -69,6 +69,7 @@ static int meminfo_proc_show(struct seq_
+ 	show_val_kb(m, "Inactive(anon): ", pages[LRU_INACTIVE_ANON]);
+ 	show_val_kb(m, "Active(file):   ", pages[LRU_ACTIVE_FILE]);
+ 	show_val_kb(m, "Inactive(file): ", pages[LRU_INACTIVE_FILE]);
++	show_val_kb(m, "Isolated(file): ", global_node_page_state(NR_ISOLATED_FILE));
+ 	show_val_kb(m, "Unevictable:    ", pages[LRU_UNEVICTABLE]);
+ 	show_val_kb(m, "Mlocked:        ", global_zone_page_state(NR_MLOCK));
+ 
