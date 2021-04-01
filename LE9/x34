@@ -1,0 +1,177 @@
+#!/usr/bin/env python3
+
+import os
+from time import monotonic, sleep
+from sys import argv, exit
+import threading
+
+
+
+
+def start_thread(func, *a, **k):
+    """ run function in a new thread
+    """
+    threading.Thread(target=func, args=a, kwargs=k, daemon=True).start()
+
+
+
+
+
+fd = dict()
+
+
+
+
+
+
+
+
+x = dict()
+
+
+MIB = 1024**2
+
+chunk_size = MIB
+
+
+fd['FINISH_READER'] = False
+
+
+
+if_path, of_path = argv[1:]
+
+if_size0 = os.stat(if_path).st_size
+
+
+
+fd['r'] = 0
+fd['w'] = 0
+
+
+
+
+try:
+    fd[if_path] = open(if_path, 'rb')
+except Exception as e:
+    print(e)
+    exit(1)
+
+
+try:
+    fd[of_path] = open(of_path, 'wb')
+except Exception as e:
+    print(e)
+    exit(1)
+
+
+
+print('source file: {}, size: {} MiB'.format(if_path, round(
+    os.stat(if_path).st_size / MIB, 1)))
+print('destination file: {}, size: {} MiB'.format(of_path, round(
+    os.stat(of_path).st_size / MIB, 1)))
+print('-------\n')
+
+
+
+
+
+
+
+
+
+
+
+t0 = monotonic()
+
+
+
+
+def reader():
+    """
+    """
+    c = 0
+    while True:
+        if len(x) >= 50:
+            sleep(0.1)
+            continue
+        chunk = fd[if_path].read(chunk_size)
+        x[c] = chunk
+        if len(chunk) == 0:
+            fd['FINISH_READER'] = True
+            break
+        c += 1
+        fd['r'] += len(chunk)
+
+
+
+start_thread(reader)
+
+
+
+c = 0
+
+while True:
+    try:
+        chunk = x[c]
+        try:
+            fd[of_path].write(chunk)
+        except OSError as e:
+
+            # обнов инфу о размере записанного
+            print(e)
+            os.fsync(fd[of_path])
+            exit(1)
+
+        del x[c]
+
+        os.fsync(fd[of_path])
+
+
+    except KeyError:
+        sleep(0.1)
+        continue
+    c += 1
+
+    fd['w'] += len(chunk)
+
+    t = monotonic() - t0
+    speed = fd['w'] / MIB / t
+
+    print('\033Mread {}M; written {}M in {}s ({}M/s)'.format(
+        round(fd['r'] / MIB, 1), round(fd['w'] / MIB, 1), round(t, 1), round(speed, 1)
+        ))
+
+    if fd['w'] == fd['r'] and fd['FINISH_READER']:
+        os.fsync(fd[of_path])
+        break
+
+
+
+
+t = monotonic() - t0
+speed = fd['w'] / MIB / t
+
+print('-------')
+print('OK; read {}M; written {}M in {}s ({}M/s)'.format(
+    round(fd['r'] / MIB, 1), round(fd['w'] / MIB, 1), round(t, 1), round(speed, 1)
+    ))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
