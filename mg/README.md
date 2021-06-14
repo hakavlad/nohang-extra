@@ -13,16 +13,24 @@ It looks like the kernel with mg-LRU only distinguishes three `vm.swappiness` va
 
 The config is still the same, only the values of the `vm.swappiness` are changed.
 
-===========================================================================
 
-## cache-bench -w 1000
+
+
+
+=================================================================================================================
+
+
+
+
+
+## cache-bench -w 300
 
 ```
-cache-bench -w 1000
+cache-bench -w 300
 cache-bench -r 25000
 ```
 
-### Results of tests execution with mg-LRU.
+#### Results of tests execution with mg-LRU
 
 ```C
 # vm.swappiness=200
@@ -141,6 +149,8 @@ read 25000.0M in 95.6s (avg 261.5M/s); src: 300 files, 300.0M
 
 #### Results of tests execution with classic LRU
 
+With classic LRU, `vm.swappiness` have a big impact on the result, as expected.
+
 ```C
 # vm.swappiness=200
 
@@ -235,7 +245,22 @@ read 25000.0M in 523.3s (avg 47.8M/s); src: 300 files, 300.0M
 read 25000.0M in 550.7s (avg 45.4M/s); src: 300 files, 300.0M
 ```
 
-===========================================================================
+
+
+
+
+
+
+
+=================================================================================================================
+
+
+
+
+
+
+
+
 
 ## cache-bench -w 50
 
@@ -243,6 +268,14 @@ read 25000.0M in 550.7s (avg 45.4M/s); src: 300 files, 300.0M
 cache-bench -w 50 -p test50
 vm-reset && cache-bench -r 25000 -p test50
 ```
+
+
+
+
+
+
+
+
 
 #### Results of tests execution with classic LRU
 
@@ -297,6 +330,16 @@ read 25000.0M in 69.8s (avg 358.3M/s); src: 50 files, 50.0M
 read 25000.0M in 477.7s (avg 52.3M/s); src: 50 files, 50.0M
 ```
 
+
+
+
+
+
+
+
+
+
+
 #### Results of tests execution with mg-LRU
 
 ```C
@@ -317,7 +360,6 @@ read 25000.0M in 40.7s (avg 614.4M/s); src: 50 files, 50.0M
 read 25000.0M in 42.8s (avg 584.0M/s); src: 50 files, 50.0M
 ```
 
-===========================================================================
 
 ## cache-bench -w 1
 
@@ -368,7 +410,21 @@ read 25000.0M in 18.8s (avg 1327.2M/s); src: 1 files, 1.0M
 read 25000.0M in 18.6s (avg 1346.9M/s); src: 1 files, 1.0M
 ```
 
-===========================================================================
+
+
+
+
+
+
+=================================================================================================================
+
+
+
+
+
+
+
+
 
 ## cache-bench -w 1000
 
@@ -377,25 +433,9 @@ cache-bench -w 1000 -p test1000
 vm-reset && cache-bench -r 25000 -p test1000
 ```
 
-#### Results of tests execution with classic LRU
 
-```C
-# vm.swappiness=200
 
-read 25000.0M in 42.6s (avg 587.3M/s); src: 1000 files, 1000.0M
-```
 
-```C
-# vm.swappiness=100
-
-read 25000.0M in 130.5s (avg 191.6M/s); src: 1000 files, 1000.0M
-```
-
-```C
-# vm.swappiness=10
-
-read 25000.0M in 289.5s (avg 86.3M/s); src: 1000 files, 1000.0M
-```
 
 #### Results of tests execution with mg-LRU
 
@@ -422,5 +462,38 @@ read 25000.0M in 172.8s (avg 144.7M/s); src: 1000 files, 1000.0M
 
 read 25000.0M in 222.9s (avg 112.2M/s); src: 1000 files, 1000.0M
 ```
+
+
+
+
+
+#### Results of tests execution with classic LRU
+
+```C
+# vm.swappiness=200
+
+read 25000.0M in 42.6s (avg 587.3M/s); src: 1000 files, 1000.0M
+```
+
+```C
+# vm.swappiness=100
+
+read 25000.0M in 130.5s (avg 191.6M/s); src: 1000 files, 1000.0M
+```
+
+```C
+# vm.swappiness=10
+
+read 25000.0M in 289.5s (avg 86.3M/s); src: 1000 files, 1000.0M
+```
+
+
+
+
+
+
+
+
+
 
 
