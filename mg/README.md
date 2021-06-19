@@ -418,7 +418,7 @@ read 25000.0M in 172.8s (avg 144.7M/s); src: 1000 files, 1000.0M
 read 25000.0M in 222.9s (avg 112.2M/s); src: 1000 files, 1000.0M
 ```
 
----------------------------------------------------------------------------
+--
 
 #### Results of tests execution with classic LRU
 
