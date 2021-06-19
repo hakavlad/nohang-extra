@@ -1,5 +1,4 @@
 
-
 # Bonus
 
 Here are the test results without logs, only the results.
@@ -13,15 +12,9 @@ It looks like the kernel with mg-LRU only distinguishes three `vm.swappiness` va
 
 The config is still the same, only the values of the `vm.swappiness` are changed.
 
+===========================================================================
 
-
-
-
-=================================================================================================================
-
-
-
-
+1) 300
 
 ## cache-bench -w 300
 
@@ -245,37 +238,38 @@ read 25000.0M in 523.3s (avg 47.8M/s); src: 300 files, 300.0M
 read 25000.0M in 550.7s (avg 45.4M/s); src: 300 files, 300.0M
 ```
 
+===========================================================================
 
-
-
-
-
-
-
-=================================================================================================================
-
-
-
-
-
-
-
-
+2) 50
 
 ## cache-bench -w 50
 
 ```
 cache-bench -w 50 -p test50
-vm-reset && cache-bench -r 25000 -p test50
+cache-bench -r 25000 -p test50
 ```
 
+#### Results of tests execution with mg-LRU
 
+```C
+# vm.swappiness=200
 
+read 25000.0M in 40.6s (avg 615.6M/s); src: 50 files, 50.0M
+```
 
+```C
+# vm.swappiness=10
 
+read 25000.0M in 40.7s (avg 614.4M/s); src: 50 files, 50.0M
+```
 
+```C
+# vm.swappiness=1
 
+read 25000.0M in 42.8s (avg 584.0M/s); src: 50 files, 50.0M
+```
 
+---------------------------------------------------------------------------
 
 #### Results of tests execution with classic LRU
 
@@ -330,13 +324,16 @@ read 25000.0M in 69.8s (avg 358.3M/s); src: 50 files, 50.0M
 read 25000.0M in 477.7s (avg 52.3M/s); src: 50 files, 50.0M
 ```
 
+===========================================================================
 
+3) 1
 
+## cache-bench -w 1
 
-
-
-
-
+```
+cache-bench -w 1 -p test1
+cache-bench -r 25000 -p test1
+```
 
 
 
@@ -345,28 +342,18 @@ read 25000.0M in 477.7s (avg 52.3M/s); src: 50 files, 50.0M
 ```C
 # vm.swappiness=200
 
-read 25000.0M in 40.6s (avg 615.6M/s); src: 50 files, 50.0M
-```
-
-```C
-# vm.swappiness=10
-
-read 25000.0M in 40.7s (avg 614.4M/s); src: 50 files, 50.0M
+read 25000.0M in 20.1s (avg 1246.6M/s); src: 1 files, 1.0M
+read 25000.0M in 20.6s (avg 1211.1M/s); src: 1 files, 1.0M
 ```
 
 ```C
 # vm.swappiness=1
 
-read 25000.0M in 42.8s (avg 584.0M/s); src: 50 files, 50.0M
+read 25000.0M in 18.8s (avg 1327.2M/s); src: 1 files, 1.0M
+read 25000.0M in 18.6s (avg 1346.9M/s); src: 1 files, 1.0M
 ```
 
-
-## cache-bench -w 1
-
-```
-cache-bench -w 1 -p test1
-vm-reset && cache-bench -r 25000 -p test1
-```
+---------------------------------------------------------------------------
 
 #### Results of tests execution with classic LRU
 
@@ -394,48 +381,16 @@ read 25000.0M in 38.6s (avg 648.3M/s); src: 1 files, 1.0M
 read 25000.0M in 110.7s (avg 225.9M/s); src: 1 files, 1.0M
 ```
 
-#### Results of tests execution with mg-LRU
+===========================================================================
 
-```C
-# vm.swappiness=200
-
-read 25000.0M in 20.1s (avg 1246.6M/s); src: 1 files, 1.0M
-read 25000.0M in 20.6s (avg 1211.1M/s); src: 1 files, 1.0M
-```
-
-```C
-# vm.swappiness=1
-
-read 25000.0M in 18.8s (avg 1327.2M/s); src: 1 files, 1.0M
-read 25000.0M in 18.6s (avg 1346.9M/s); src: 1 files, 1.0M
-```
-
-
-
-
-
-
-
-=================================================================================================================
-
-
-
-
-
-
-
-
+4) 1000
 
 ## cache-bench -w 1000
 
 ```
 cache-bench -w 1000 -p test1000
-vm-reset && cache-bench -r 25000 -p test1000
+cache-bench -r 25000 -p test1000
 ```
-
-
-
-
 
 #### Results of tests execution with mg-LRU
 
@@ -463,9 +418,7 @@ read 25000.0M in 172.8s (avg 144.7M/s); src: 1000 files, 1000.0M
 read 25000.0M in 222.9s (avg 112.2M/s); src: 1000 files, 1000.0M
 ```
 
-
-
-
+---------------------------------------------------------------------------
 
 #### Results of tests execution with classic LRU
 
@@ -486,14 +439,4 @@ read 25000.0M in 130.5s (avg 191.6M/s); src: 1000 files, 1000.0M
 
 read 25000.0M in 289.5s (avg 86.3M/s); src: 1000 files, 1000.0M
 ```
-
-
-
-
-
-
-
-
-
-
 
