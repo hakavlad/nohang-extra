@@ -1,0 +1,199 @@
+#!/usr/bin/env python3
+
+import base64
+from argparse import ArgumentParser
+from os import fsync, path
+from random import random
+
+parser = ArgumentParser()
+
+parser.add_argument(
+    '-i',
+    '--inf',
+    help='input file',
+    default=None,
+    type=str
+)
+
+parser.add_argument(
+    '-o',
+    '--outf',
+    help='output file',
+    default=None,
+    type=str
+)
+
+parser.add_argument(
+    '-m',
+    '--mode',
+    help='mode (bin2csv | csv2bin | bin2xml | xml2bin | bin2sql | sql2bin)',
+    default=None,
+    type=str
+)
+
+parser.add_argument(
+    '-s',
+    '--shift',
+    help='shift (any integer value, default: -2)',
+    default=-2,
+    type=int
+)
+
+
+args = parser.parse_args()
+
+in_file = args.inf
+out_file = args.outf
+mode = args.mode
+shift = args.shift
+
+
+if in_file is None or out_file is None or mode is None:
+    print('invalid input')
+    exit(1)
+
+if path.exists(out_file):
+    print('output file already exists')
+    exit(1)
+
+
+if mode == 'bin2csv':
+    CHUNK = 96
+
+    start = 'A,'
+    div = ',C\r\nA,'
+    finish = ',C\r\n'
+
+    with open(out_file, 'w') as f:
+        f.write(start)
+
+    inf = open(in_file, 'rb')
+    outf = open(out_file, 'a')
+
+    while True:
+        c = inf.read(CHUNK)
+        if len(c) > 0:
+            c = base64.urlsafe_b64encode(c).decode()
+            outf.write(c[shift:])
+            outf.write(c[:shift])
+            outf.write(div)
+        else:
+            outf.write(finish)
+            fsync(outf)
+            print('OK')
+            exit()
+
+
+if mode == 'csv2bin':
+    inf = open(in_file, 'r')
+    outf = open(out_file, 'ab')
+
+    for line in inf:
+        a = line[2:-3]
+        a = a[-shift:] + a[:-shift]
+        a = a.encode()
+        a = base64.urlsafe_b64decode(a)
+        outf.write(a)
+
+    fsync(outf)
+    print('OK')
+    exit()
+
+
+if mode == 'bin2xml':
+    CHUNK = 111
+
+    start = '<?xml version="1.0" encoding="UTF-8"?>\n<content>\n<e name="'
+    div = '"/>\n<e name="'
+    finish = '"/>\n</content>\n'
+
+    with open(out_file, 'w') as f:
+        f.write(start)
+
+    inf = open(in_file, 'rb')
+    outf = open(out_file, 'a')
+
+    while True:
+        c = inf.read(CHUNK)
+        if len(c) > 0:
+            c = base64.urlsafe_b64encode(c).decode()
+            outf.write(c[shift:])
+            outf.write(c[:shift])
+            outf.write(div)
+        else:
+            outf.write(finish)
+            fsync(outf)
+            print('OK')
+            exit()
+
+
+if mode == 'xml2bin':
+    inf = open(in_file, 'r')
+    outf = open(out_file, 'ab')
+
+    for line in inf:
+        if line.startswith('<e name="'):
+            a = line[9:-4]
+            a = a[-shift:] + a[:-shift]
+            a = a.encode()
+            a = base64.urlsafe_b64decode(a)
+            outf.write(a)
+
+    fsync(outf)
+    print('OK')
+    exit()
+
+
+if mode == 'bin2sql':
+    CHUNK = 65
+    start = 'INSERT INTO `details` VALUES \n('
+    div = "'),\n("
+    finish = "');"
+
+    with open(out_file, 'w') as f:
+        f.write(start)
+
+    inf = open(in_file, 'rb')
+    outf = open(out_file, 'a')
+    outf.write(str(int(str(random())[2:])))
+    outf.write(",'")
+
+    while True:
+        c = inf.read(CHUNK)
+        if len(c) > 0:
+            c = base64.b32encode(c).decode()
+            outf.write(c[shift:])
+            outf.write(c[:shift])
+            outf.write(div)
+            while True:
+                try:
+                    outf.write(str(int(str(random())[2:])))
+                    break
+                except ValueError:
+                    pass
+            outf.write(",'")
+        else:
+            outf.write(finish)
+            fsync(outf)
+            print('OK')
+            exit()
+
+
+if mode == 'sql2bin':
+    inf = open(in_file, 'r')
+    outf = open(out_file, 'ab')
+
+    for line in inf:
+        if line.startswith('('):
+            a = line.partition(",'")[2][:-4]
+            a = a[-shift:] + a[:-shift]
+            a = a.encode()
+            a = base64.b32decode(a)
+            outf.write(a)
+
+    fsync(outf)
+    print('OK')
+    exit()
+
+
+print('invalid mode')
