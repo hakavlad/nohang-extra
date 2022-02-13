@@ -1,0 +1,5 @@
+#!/bin/sh -ev
+scripts/config --set-str SYSTEM_TRUSTED_KEYS ""
+nice -n 19 make -j`nproc`
+# build kernel: OK
+
