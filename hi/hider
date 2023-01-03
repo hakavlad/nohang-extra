@@ -1,7 +1,17 @@
 #!/usr/bin/env python3
 
+from hashlib import sha256
 from os import fsync, path
+from signal import SIGINT, signal
 from time import monotonic
+from sys import exit
+
+
+def signal_handler(signum, frame):
+    """
+    """
+    print('\nE: got signal {}'.format(signum))
+    exit(1)
 
 
 def get_len(fpath):
@@ -44,6 +54,8 @@ def get_mode():
         print('I: mode: extraction')
     return mode
 
+
+signal(SIGINT, signal_handler)
 
 mode = get_mode()
 
@@ -170,6 +182,17 @@ while True:
     break
 
 
+if mode == '1':
+    while True:
+        do_cont = input('Output file will be partially overwritten.\n'
+                        'Do you want to continue? (y|n): ')
+        if do_cont in ('y', 'Y'):
+            break
+        if do_cont in ('n', 'N'):
+            print('Exit.')
+            exit()
+
+
 if mode == '2':
     while True:
         max_data_size = i_size - init_pos
@@ -197,15 +220,15 @@ if mode == '2':
 print('I: reading, writing, fsyncing...')
 
 M = 1024**2
-chunk_size = M * 32
+CHUNK_SIZE = M * 32
 
 
 if mode == '1':
     data_size = i_size
 
 
-chunks_num = data_size // chunk_size
-ost_size = data_size % chunk_size
+chunks_num = data_size // CHUNK_SIZE
+ost_size = data_size % CHUNK_SIZE
 
 if mode == '1':
     o_object.seek(init_pos)
@@ -213,54 +236,62 @@ else:
     i_object.seek(init_pos)
 
 
+m = sha256()
+
+
 t0 = monotonic()
 t00 = t0
-summa = 0
+written_sum = 0
 print()
 print('\033Mwritten {}, {} MiB, {}%  '.format(
-    summa,
-    round(summa / M, 1),
-    round(summa / data_size * 100, 1)
+    written_sum,
+    round(written_sum / M, 1),
+    round(written_sum / data_size * 100, 1)
 ))
-
 
 if chunks_num > 0:
     for i in range(chunks_num):
-        i_data = i_object.read(chunk_size)
+        i_data = i_object.read(CHUNK_SIZE)
         o_object.write(i_data)
         fsync(o_object.fileno())
-        summa += chunk_size
-        t1 = monotonic()
-        if t1 - t0 > 2:
+        written_sum += CHUNK_SIZE
+        m.update(i_data)
+        if monotonic() - t0 > 2:
             t0 = monotonic()
             print('\033MI: written: {}, {} MiB, {}% in {}s, avg {} '
                   'MiB/s'.format(
-                      summa,
-                      round(summa / M, 1),
-                      round(summa / data_size * 100, 1),
+                      written_sum,
+                      round(written_sum / M, 1),
+                      round(written_sum / data_size * 100, 1),
                       round(monotonic() - t00, 1),
-                      round(summa / M / (monotonic() - t00), 1)))
+                      round(written_sum / M / (monotonic() - t00), 1)))
 if ost_size > 0:
     i_data = i_object.read(ost_size)
     o_object.write(i_data)
     fsync(o_object.fileno())
-    summa += ost_size
+    written_sum += ost_size
+    m.update(i_data)
     print('\033MI: written: {}, {} MiB, {}% in {}s, avg {} MiB/s'.format(
-        summa,
-        round(summa / M, 1),
-        round(summa / data_size * 100, 1),
+        written_sum,
+        round(written_sum / M, 1),
+        round(written_sum / data_size * 100, 1),
         round(monotonic() - t00, 1),
-        round(summa / M / (monotonic() - t00), 1)))
+        round(written_sum / M / (monotonic() - t00), 1)))
+
+
+sha256sum = m.hexdigest()
 
 
 if mode == '1':
     print('Remember this to extract the data from the container:')
-    print(
-        'Initial position {}, Data size {}, Final position {}'.format(
-            init_pos,
-            i_size,
-            o_object.tell()))
+    print('Initial position {}, Data size {}, Final position {}'.format(
+        init_pos, i_size, o_object.tell()))
 else:
-    print('File extracted successfully!')
+    print('I: final position:', i_object.tell())
+    print('I: file extracted successfully')
 
+i_object.close()
+o_object.close()
+
+print('SHA256:', sha256sum)
 print('OK')
