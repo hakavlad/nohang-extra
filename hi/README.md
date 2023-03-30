@@ -1,5 +1,5 @@
 
-<img src="https://i.imgur.com/IPVB0UG.png" width="1875" alt="Logo">
+![pic](https://i.imgur.com/KnBJbku.png)
 
 # tird: this is random data
 
