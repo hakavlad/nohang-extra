@@ -1,6 +1,5 @@
 
 <img src="https://i.imgur.com/xdtLaLH.png" width="769" alt="Logo">
-
 # tird: this is random data
 
 [![License](https://img.shields.io/badge/License-CC0-blue)](https://github.com/hakavlad/tird/blob/main/LICENSE)
