@@ -1,6 +1,4 @@
 
-![Logo](https://i.imgur.com/kZc0el8.png)
-
 # tird: this is random data
 
 [![License](https://img.shields.io/badge/License-CC0-blue)](https://github.com/hakavlad/tird/blob/main/LICENSE)
@@ -8,6 +6,8 @@
 [![PyPI](https://img.shields.io/pypi/v/tird?color=blue&label=PyPI)](https://pypi.org/project/tird/)
 
 Tool for encrypting and hiding files.
+
+![Logo](https://i.imgur.com/kZc0el8.png)
 
 ## Install
 
